@@ -1,0 +1,7 @@
+{
+  "name": "bmad-voice",
+  "private": true,
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0"
+  }
+}

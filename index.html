@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>BMAD Voice</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      gap: 24px;
+    }
+
+    #start-screen h1 {
+      font-size: 28px;
+      color: #fff;
+    }
+
+    #start-screen p {
+      color: #888;
+      font-size: 14px;
+      text-align: center;
+      max-width: 300px;
+    }
+
+    #start-btn {
+      padding: 16px 48px;
+      font-size: 18px;
+      background: #4A9EFF;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    #start-btn:active { background: #3a8eef; }
+
+    #app {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    #header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    #header h2 { font-size: 16px; color: #fff; }
+
+    #cost-widget {
+      font-size: 12px;
+      color: #888;
+    }
+
+    #chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .message {
+      max-width: 90%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #2a2a4a;
+      color: #fff;
+    }
+
+    .message.agent {
+      align-self: flex-start;
+      background: #16213e;
+    }
+
+    .agent-name {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .agent-text {
+      color: #d0d0d0;
+    }
+
+    .speaking-indicator {
+      opacity: 1;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    #controls {
+      padding: 12px 16px;
+      border-top: 1px solid #2a2a4a;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #message-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 24px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+
+    #message-input::placeholder { color: #555; }
+
+    #send-btn, #wrap-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #send-btn {
+      background: #4A9EFF;
+      color: #fff;
+    }
+
+    #send-btn:disabled {
+      background: #333;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    #wrap-btn {
+      background: #51CF66;
+      color: #fff;
+    }
+
+    #stop-btn {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 14px 36px;
+      background: #e03131;
+      color: #fff;
+      border: none;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(224, 49, 49, 0.4);
+    }
+
+    #speaking-label {
+      display: none;
+      position: fixed;
+      bottom: 130px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 13px;
+      color: #888;
+      z-index: 100;
+    }
+
+    .status-msg {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      padding: 8px;
+    }
+
+    #wrap-summary {
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h1>BMAD Voice</h1>
+  <p>Talk to your BMAD agent team. Brainstorm, plan, and capture action items.</p>
+  <button id="start-btn">Start Session</button>
+</div>
+
+<div id="app">
+  <div id="header">
+    <h2>BMAD Voice</h2>
+    <div id="cost-widget">$0.00 this session</div>
+  </div>
+
+  <div id="chat-area"></div>
+
+  <div id="speaking-label"></div>
+  <button id="stop-btn">STOP</button>
+
+  <div id="controls">
+    <input type="text" id="message-input" placeholder="Type or use WisprFlow..." maxlength="2000" autocomplete="off">
+    <button id="send-btn">Send</button>
+    <button id="wrap-btn">Wrap</button>
+  </div>
+</div>
+
+<script>
+// Auth handled by Basic Auth middleware on all routes
+
+const AGENT_COLORS = {
+  ANALYST: '#4A9EFF',
+  PM: '#FF6B6B',
+  ARCHITECT: '#51CF66',
+  DEVELOPER: '#FF922B',
+  STRATEGIST: '#BE4BDB',
+  PROBLEM_SOLVER: '#20C997',
+  BRAINSTORM_COACH: '#FCC419',
+  STORYTELLER: '#F06595',
+};
+
+const AGENT_DISPLAY = {
+  ANALYST: 'Mary (Analyst)',
+  PM: 'John (PM)',
+  ARCHITECT: 'Winston (Architect)',
+  DEVELOPER: 'Amelia (Developer)',
+  STRATEGIST: 'Victor (Strategist)',
+  PROBLEM_SOLVER: 'Dr. Quinn (Problem Solver)',
+  BRAINSTORM_COACH: 'Carson (Brainstorm Coach)',
+  STORYTELLER: 'Sophia (Storyteller)',
+};
+
+let conversationHistory = [];
+let sessionCost = 0;
+let sessionStartedAt = null;
+let totalInputTokens = 0;
+let totalOutputTokens = 0;
+let totalCartesiaChars = 0;
+let isPlaying = false;
+let audioQueue = [];
+let currentAudio = null;
+let abortController = null;
+let isWaiting = false;
+
+const startScreen = document.getElementById('start-screen');
+const app = document.getElementById('app');
+const chatArea = document.getElementById('chat-area');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const wrapBtn = document.getElementById('wrap-btn');
+const stopBtn = document.getElementById('stop-btn');
+const costWidget = document.getElementById('cost-widget');
+const speakingLabel = document.getElementById('speaking-label');
+
+// Start session
+document.getElementById('start-btn').addEventListener('click', () => {
+  startScreen.style.display = 'none';
+  app.style.display = 'flex';
+  sessionStartedAt = new Date().toISOString();
+  messageInput.focus();
+  addStatus('Session started. What would you like to discuss?');
+});
+
+// Send message
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Stop audio
+stopBtn.addEventListener('click', stopAudio);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isPlaying) {
+    stopAudio();
+  }
+});
+
+// Wrap up
+wrapBtn.addEventListener('click', wrapUp);
+
+async function sendMessage() {
+  const text = messageInput.value.trim();
+  if (!text || isWaiting) return;
+
+  messageInput.value = '';
+  addMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  isWaiting = true;
+  sendBtn.disabled = true;
+  addStatus('Agents are thinking...');
+
+  try {
+    abortController = new AbortController();
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages: conversationHistory }),
+      signal: abortController.signal,
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      removeLastStatus();
+      addStatus(err.error || 'Something went wrong.');
+      isWaiting = false;
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    removeLastStatus();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === 'text') {
+              fullText += data.content;
+            }
+
+            if (data.type === 'done' && data.usage) {
+              totalInputTokens += data.usage.inputTokens;
+              totalOutputTokens += data.usage.outputTokens;
+              sessionCost += data.usage.estimatedCost;
+              updateCostWidget();
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    conversationHistory.push({ role: 'assistant', content: fullText });
+
+    const agentBlocks = parseAgentBlocks(fullText);
+    displayAgentBlocks(agentBlocks);
+    playAgentAudio(agentBlocks);
+
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      removeLastStatus();
+      addStatus('Connection error. Try again.');
+    }
+  }
+
+  isWaiting = false;
+  sendBtn.disabled = false;
+}
+
+function parseAgentBlocks(text) {
+  const blocks = [];
+  const regex = /\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*([\s\S]*?)(?=\n\n\[(?:ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:|$)/g;
+
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    blocks.push({
+      agent: match[1],
+      text: match[2].trim(),
+    });
+  }
+
+  if (blocks.length === 0) {
+    blocks.push({ agent: 'PM', text: text.trim() });
+  }
+
+  return blocks;
+}
+
+function displayAgentBlocks(blocks) {
+  for (const block of blocks) {
+    const div = document.createElement('div');
+    div.className = 'message agent';
+    div.dataset.agent = block.agent;
+
+    const name = document.createElement('div');
+    name.className = 'agent-name';
+    name.style.color = AGENT_COLORS[block.agent] || '#fff';
+    name.textContent = AGENT_DISPLAY[block.agent] || block.agent;
+
+    const text = document.createElement('div');
+    text.className = 'agent-text';
+    text.textContent = block.text;
+
+    div.appendChild(name);
+    div.appendChild(text);
+    chatArea.appendChild(div);
+  }
+
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function playAgentAudio(blocks) {
+  audioQueue = [...blocks];
+  isPlaying = true;
+  stopBtn.style.display = 'block';
+
+  for (let i = 0; i < audioQueue.length; i++) {
+    if (!isPlaying) break;
+
+    const block = audioQueue[i];
+    speakingLabel.textContent = `${AGENT_DISPLAY[block.agent] || block.agent} is speaking...`;
+    speakingLabel.style.display = 'block';
+
+    // Highlight current speaker
+    const msgs = chatArea.querySelectorAll(`[data-agent="${block.agent}"]`);
+    const lastMsg = msgs[msgs.length - 1];
+    if (lastMsg) lastMsg.classList.add('speaking-indicator');
+
+    try {
+      const response = await fetch('/api/speak', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: block.text, agent: block.agent }),
+      });
+
+      if (!response.ok) continue;
+
+      const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || '0');
+      totalCartesiaChars += charCount;
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      await new Promise((resolve) => {
+        if (!isPlaying) { resolve(); return; }
+
+        currentAudio = new Audio(audioUrl);
+        currentAudio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        currentAudio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        };
+        currentAudio.play().catch(resolve);
+      });
+
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error('Audio error:', err);
+    }
+
+    if (lastMsg) lastMsg.classList.remove('speaking-indicator');
+  }
+
+  isPlaying = false;
+  stopBtn.style.display = 'none';
+  speakingLabel.style.display = 'none';
+  currentAudio = null;
+}
+
+function stopAudio() {
+  isPlaying = false;
+  audioQueue = [];
+
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+
+  stopBtn.style.display = 'none';
+  speakingLabel.style.display = 'none';
+
+  const speaking = chatArea.querySelectorAll('.speaking-indicator');
+  speaking.forEach(el => el.classList.remove('speaking-indicator'));
+}
+
+async function wrapUp() {
+  if (conversationHistory.length < 2) {
+    addStatus('Not enough conversation to wrap up.');
+    return;
+  }
+
+  isWaiting = true;
+  sendBtn.disabled = true;
+  wrapBtn.disabled = true;
+  addStatus('Creating session summary...');
+
+  const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this BMAD session including:
+
+1. Executive Summary (3 to 5 bullet points of the most important outcomes)
+2. Key Insights and Decisions Made
+3. Open Questions That Need Answers
+4. Action Items (be specific and actionable)
+
+Format the action items as a JSON array at the very end, on its own line, wrapped in <tasks> tags:
+<tasks>[{"title": "Task name", "notes": "Details", "due_date": "YYYY-MM-DD"}]</tasks>
+
+Session cost: $${sessionCost.toFixed(4)}
+Include the session cost in the summary.`;
+
+  const wrapMessages = [
+    ...conversationHistory,
+    { role: 'user', content: wrapPrompt },
+  ];
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages: wrapMessages }),
+    });
+
+    if (!response.ok) {
+      removeLastStatus();
+      addStatus('Wrap up failed. Try again.');
+      isWaiting = false;
+      sendBtn.disabled = false;
+      wrapBtn.disabled = false;
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let summaryText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'text') summaryText += data.content;
+            if (data.type === 'done' && data.usage) {
+              totalInputTokens += data.usage.inputTokens;
+              totalOutputTokens += data.usage.outputTokens;
+              sessionCost += data.usage.estimatedCost;
+              updateCostWidget();
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
+    removeLastStatus();
+
+    // Display summary
+    const summaryDiv = document.createElement('div');
+    summaryDiv.id = 'wrap-summary';
+
+    // Extract tasks before display
+    const tasksMatch = summaryText.match(/<tasks>([\s\S]*?)<\/tasks>/);
+    const displayText = summaryText.replace(/<tasks>[\s\S]*?<\/tasks>/, '').trim();
+    summaryDiv.textContent = displayText;
+    chatArea.appendChild(summaryDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    // Read executive summary aloud
+    const execMatch = displayText.match(/Executive Summary[\s\S]*?(?=\n\n|Key Insights|$)/i);
+    if (execMatch) {
+      await playAgentAudio([{ agent: 'ANALYST', text: execMatch[0] }]);
+    }
+
+    // Push tasks to Asana
+    if (tasksMatch) {
+      try {
+        const tasks = JSON.parse(tasksMatch[1]);
+        if (tasks.length > 0) {
+          addStatus(`Pushing ${tasks.length} task(s) to Asana...`);
+
+          const taskResponse = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tasks }),
+          });
+
+          if (taskResponse.ok) {
+            const result = await taskResponse.json();
+            const succeeded = result.results.filter(r => r.success).length;
+            removeLastStatus();
+            addStatus(`${succeeded} of ${tasks.length} task(s) created in Asana.`);
+          } else {
+            removeLastStatus();
+            addStatus('Failed to create Asana tasks.');
+          }
+        }
+      } catch (e) {
+        console.error('Task parse error:', e);
+        addStatus('Could not parse action items for Asana.');
+      }
+    }
+
+    // Save session to database
+    await fetch('/api/usage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        started_at: sessionStartedAt,
+        ended_at: new Date().toISOString(),
+        total_input_tokens: totalInputTokens,
+        total_output_tokens: totalOutputTokens,
+        total_cartesia_characters: totalCartesiaChars,
+        estimated_cost_usd: sessionCost,
+        summary_text: displayText,
+        messages_json: conversationHistory,
+      }),
+    }).catch(console.error);
+
+    addStatus('Session wrapped up and saved.');
+
+  } catch (err) {
+    removeLastStatus();
+    addStatus('Wrap up error: ' + err.message);
+  }
+
+  isWaiting = false;
+  sendBtn.disabled = false;
+  wrapBtn.disabled = false;
+}
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.textContent = text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addStatus(text) {
+  const div = document.createElement('div');
+  div.className = 'status-msg';
+  div.textContent = text;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeLastStatus() {
+  const statuses = chatArea.querySelectorAll('.status-msg');
+  if (statuses.length > 0) {
+    statuses[statuses.length - 1].remove();
+  }
+}
+
+function updateCostWidget() {
+  costWidget.textContent = `$${sessionCost.toFixed(4)} this session`;
+}
+</script>
+</body>
+</html>
