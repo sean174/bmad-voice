@@ -1352,8 +1352,11 @@ async function prefetchAudio(block) {
       return null;
     }
 
-    const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || '0');
+    const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || block.text.length.toString());
     totalCartesiaChars += charCount;
+    // Cartesia cost: $5 per 100k characters
+    sessionCost += charCount * 5 / 100000;
+    updateCost();
 
     const audioBlob = await response.blob();
     return URL.createObjectURL(audioBlob);
