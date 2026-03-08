@@ -238,6 +238,12 @@ export default async function handler(req, res) {
 
   let systemPrompt = SYSTEM_PROMPT;
 
+  // Tell the agents who they're talking to
+  if (user_label && user_label !== 'unknown') {
+    const displayName = user_label.charAt(0).toUpperCase() + user_label.slice(1);
+    systemPrompt += `\n\nThe user's name is ${displayName}. Use their name naturally in conversation. Not every response, but enough that it feels personal.`;
+  }
+
   // For non-admin users resuming a partial interview
   if (!isAdminUser(user_label) && !isNewUser && !interviewComplete && userContext && messages.length === 1) {
     systemPrompt = SYSTEM_PROMPT + `\n\n--- RESUME INTERVIEW MODE ---
