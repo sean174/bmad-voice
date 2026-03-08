@@ -59,7 +59,7 @@ const AGENTS = {
 
 const AGENT_NAMES = Object.keys(AGENTS);
 
-const SYSTEM_PROMPT = `You are running a BMAD team meeting. The team consists of:
+const SYSTEM_PROMPT = `You are running a brainstorming team meeting. The team consists of:
 
 ${AGENT_NAMES.map(key => {
   const a = AGENTS[key];

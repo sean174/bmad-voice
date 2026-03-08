@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>BMAD Voice</title>
+  <title>Brainstorm</title>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -795,7 +795,7 @@
 
 <!-- SCREEN 1: LOGIN -->
 <div id="login-screen" class="screen active">
-  <span class="section-label">BMAD Voice</span>
+  <span class="section-label">Brainstorm</span>
   <h1 class="headline">Welcome back.</h1>
   <p class="subtext">Sign in to start a session.</p>
   <form id="login-form" onsubmit="return false">
@@ -808,7 +808,7 @@
 
 <!-- SCREEN 2: START SESSION -->
 <div id="start-screen" class="screen">
-  <span class="section-label">BMAD Voice</span>
+  <span class="section-label">Brainstorm</span>
   <h1 class="headline">Ready when<br>you are.</h1>
   <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
@@ -818,7 +818,7 @@
 <!-- SCREEN 3: CHAT -->
 <div id="chat-screen" class="screen">
   <div id="header">
-    <div id="header-title">BMAD Voice</div>
+    <div id="header-title">Brainstorm</div>
     <div id="session-cost">$0.00</div>
     <div id="session-timer">00:00</div>
     <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voices Off</button>
@@ -1360,7 +1360,7 @@ async function wrapUp(sendToClaude) {
   wrapSendBtn.disabled = true;
   addStatus('Creating summary...');
 
-  const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this BMAD session including:
+  const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this brainstorming session including:
 
 1. Executive Summary (3 to 5 bullet points of the most important outcomes)
 2. Key Insights and Decisions Made

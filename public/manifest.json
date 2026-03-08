@@ -1,11 +1,11 @@
 {
-  "name": "BMAD Voice",
-  "short_name": "BMAD",
+  "name": "Brainstorm",
+  "short_name": "Brainstorm",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080808",
   "theme_color": "#080808",
-  "description": "Voice-powered AI brainstorming with your BMAD agent team",
+  "description": "Voice-powered AI brainstorming with your team",
   "icons": [
     {
       "src": "/icons/icon-192.png",
