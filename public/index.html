@@ -1833,7 +1833,9 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition = null;
 let isRecording = false;
 
-if (SpeechRecognition) {
+// Hide mic on iOS - webkitSpeechRecognition freezes the page in PWA/Safari
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+if (SpeechRecognition && !isIOS) {
   micBtn.style.display = 'flex';
   recognition = new SpeechRecognition();
   recognition.continuous = true;
