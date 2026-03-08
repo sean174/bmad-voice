@@ -14,11 +14,12 @@ const DEFAULT_VOICE = 'a0e99841-438c-4a64-b679-ae501e7d6091';
 
 function cleanTextForSpeech(text) {
   return text
+    .replace(/\*[^*]+\*/g, '')      // *stage directions* and *italics*
     .replace(/```[\s\S]*?```/g, '') // code blocks
     .replace(/`[^`]+`/g, '')        // inline code
     .replace(/https?:\/\/\S+/g, '') // URLs
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // markdown links -> text
-    .replace(/[*_#>\-|]/g, '')      // markdown formatting
+    .replace(/[_#>\-|]/g, '')       // markdown formatting
     .replace(/\n{2,}/g, '. ')       // double newlines to pause
     .replace(/\n/g, ' ')            // single newlines to space
     .replace(/\s{2,}/g, ' ')        // collapse whitespace
@@ -55,6 +56,8 @@ export default async function handler(req, res) {
         model_id: 'sonic-2',
         transcript: cleanText,
         voice: { mode: 'id', id: voiceId },
+        language: 'en',
+        speed: 'fast',
         output_format: {
           container: 'mp3',
           bit_rate: 128000,

@@ -83,6 +83,7 @@ Format your response exactly like this:
 [ARCHITECT]: Their reply here.
 
 Only include agents that have something meaningful to add. Never force all agents to speak every time.
+Never use stage directions, actions in asterisks, or roleplay narration like *leans back* or *pauses thoughtfully*. Just speak naturally.
 Valid agent tags: [ANALYST], [PM], [ARCHITECT], [DEVELOPER], [STRATEGIST], [PROBLEM_SOLVER], [BRAINSTORM_COACH], [STORYTELLER]`;
 
 async function checkRateLimits() {
