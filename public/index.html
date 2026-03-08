@@ -1289,6 +1289,8 @@ let hasChosenMode = false;
 let pendingAgentBlocks = null;
 let audioQueue = [];
 let currentAudio = null;
+// Persistent audio element for iOS Safari - reusing an unlocked element bypasses autoplay restrictions
+const persistentAudio = new Audio();
 let abortController = null;
 let isWaiting = false;
 let timerInterval = null;
@@ -2064,9 +2066,11 @@ async function playAgentAudio(blocks) {
     if (audioUrl) {
       await new Promise((resolve) => {
         if (!isPlaying) { URL.revokeObjectURL(audioUrl); resolve(); return; }
-        currentAudio = new Audio(audioUrl);
+        // Reuse persistent audio element to bypass iOS Safari autoplay restrictions
+        currentAudio = persistentAudio;
         currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+        currentAudio.src = audioUrl;
         currentAudio.play().catch(e => {
           showToast('Play blocked: ' + e.message, 'error');
           URL.revokeObjectURL(audioUrl);
@@ -2093,7 +2097,7 @@ document.addEventListener('keydown', (e) => {
 function stopAudio() {
   isPlaying = false;
   audioQueue = [];
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; }
   showStopButton(false);
   speakingLabel.style.display = 'none';
   chatArea.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
@@ -2271,8 +2275,9 @@ voiceOnBtn.addEventListener('click', () => {
 function unlockAudio() {
   try {
     if (window._audioCtx) window._audioCtx.resume();
-    const s = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0P////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABsOjRaxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAANTA0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAAHNKgAAAAACYGhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//M4wAAAAesAAAAAAAANDQ0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAA=');
-    s.play().catch(() => {});
+    // Unlock the persistent audio element with a silent MP3 on user gesture
+    persistentAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0P////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABsOjRaxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAANTA0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAAHNKgAAAAACYGhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//M4wAAAAesAAAAAAAANDQ0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAA=';
+    persistentAudio.play().catch(() => {});
   } catch(e) {}
 }
 
