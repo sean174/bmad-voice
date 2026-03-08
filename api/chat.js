@@ -100,6 +100,49 @@ async function getAdminContext() {
   }
 }
 
+async function getRecentConversations(userLabel) {
+  if (!process.env.POSTGRES_URL || !userLabel) return '';
+  const { Pool } = require('@neondatabase/serverless');
+  const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+  try {
+    // Get conversations from the last 24 hours for this user
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = await pool.query(
+      `SELECT session_id, user_message, assistant_message, created_at
+       FROM conversation_log
+       WHERE user_label = $1 AND created_at > $2
+       ORDER BY created_at`,
+      [userLabel, dayAgo]
+    );
+    if (result.rows.length === 0) return '';
+
+    // Group by session and format
+    const sessions = {};
+    for (const row of result.rows) {
+      if (!sessions[row.session_id]) sessions[row.session_id] = [];
+      sessions[row.session_id].push(row);
+    }
+
+    let summary = '';
+    for (const [sid, messages] of Object.entries(sessions)) {
+      const time = new Date(messages[0].created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      summary += `\nSession at ${time}:\n`;
+      for (const msg of messages) {
+        // Truncate long messages to keep prompt manageable
+        const userSnippet = msg.user_message.length > 200 ? msg.user_message.slice(0, 200) + '...' : msg.user_message;
+        const assistSnippet = msg.assistant_message.length > 300 ? msg.assistant_message.slice(0, 300) + '...' : msg.assistant_message;
+        summary += `  User: ${userSnippet}\n  Team: ${assistSnippet}\n`;
+      }
+    }
+
+    return summary.trim();
+  } catch (e) {
+    return '';
+  } finally {
+    await pool.end();
+  }
+}
+
 async function getUserContext(userLabel) {
   if (!process.env.POSTGRES_URL || !userLabel) return { context: '', isNew: false };
   const { Pool } = require('@neondatabase/serverless');
@@ -322,11 +365,19 @@ The user's first message will likely be a greeting since they chose to do the in
     systemPrompt += '\n\n--- ABOUT THIS USER (from previous sessions) ---\n' + userContext;
   }
 
-  // Load business context for admin users
+  // Load business context and recent conversations for admin users
   if (isAdminUser(user_label)) {
     const context = await getAdminContext();
     if (context) {
       systemPrompt += '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
+    }
+
+    // Inject recent brainstorm conversations so agents have continuity
+    if (messages.length <= 1) {
+      const recentConvos = await getRecentConversations(user_label);
+      if (recentConvos) {
+        systemPrompt += '\n\n--- RECENT BRAINSTORM CONVERSATIONS (last 24 hours) ---\nThe user had these earlier conversations with the team today. Reference them naturally if relevant, but don\'t recite them back unless asked.\n' + recentConvos;
+      }
     }
   }
 
