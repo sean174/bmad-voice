@@ -1514,9 +1514,11 @@ function showInterviewNudge() {
 
 // ---- QUICK TOUR ----
 const TOUR_STEPS = [
+  { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
   { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below' },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
   { target: '#message-input', text: 'Type here, or use voice-to-text to talk to the team.', position: 'above' },
+  { fullscreen: true, headline: "All done.", text: "Let's meet the team.", btnText: 'Meet the team' },
 ];
 
 let tourStep = 0;
@@ -1544,22 +1546,46 @@ function startTour(callback) {
 
 function showTourStep() {
   const step = TOUR_STEPS[tourStep];
+  const highlight = document.getElementById('tour-highlight');
+  const tooltip = document.getElementById('tour-tooltip');
+  const stepLabel = document.getElementById('tour-step-label');
+  const skipBtn = document.getElementById('tour-skip');
+
+  if (step.fullscreen) {
+    // Fullscreen message, no highlight
+    highlight.style.display = 'none';
+    stepLabel.textContent = '';
+    document.getElementById('tour-text').innerHTML = `<span style="font-family:'Fraunces',serif; font-style:italic; font-weight:800; font-size:22px; display:block; margin-bottom:8px;">${step.headline}</span>${step.text}`;
+    document.getElementById('tour-next').textContent = step.btnText;
+    // Center the tooltip
+    tooltip.style.top = '50%';
+    tooltip.style.left = '50%';
+    tooltip.style.transform = 'translate(-50%, -50%)';
+    tooltip.style.bottom = 'auto';
+    // Hide skip on last fullscreen step
+    skipBtn.style.display = tourStep === TOUR_STEPS.length - 1 ? 'none' : 'block';
+    return;
+  }
+
+  // Regular highlight step
+  highlight.style.display = 'block';
+  tooltip.style.transform = 'none';
+  skipBtn.style.display = 'block';
+
   const targetEl = document.querySelector(step.target);
   if (!targetEl) { tourStep++; return showTourStep(); }
 
   const rect = targetEl.getBoundingClientRect();
   const pad = 6;
 
-  const highlight = document.getElementById('tour-highlight');
   highlight.style.top = (rect.top - pad) + 'px';
   highlight.style.left = (rect.left - pad) + 'px';
   highlight.style.width = (rect.width + pad * 2) + 'px';
   highlight.style.height = (rect.height + pad * 2) + 'px';
 
-  const tooltip = document.getElementById('tour-tooltip');
-  document.getElementById('tour-step-label').textContent = `Step ${tourStep + 1} of ${TOUR_STEPS.length}`;
+  stepLabel.textContent = `Step ${tourStep} of ${TOUR_STEPS.length - 2}`;
   document.getElementById('tour-text').textContent = step.text;
-  document.getElementById('tour-next').textContent = tourStep === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  document.getElementById('tour-next').textContent = 'Next';
 
   if (step.position === 'below') {
     tooltip.style.top = (rect.bottom + 16) + 'px';
