@@ -841,10 +841,10 @@
   </div>
 
   <div id="interview-choice" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:40px;">
-    <h2 style="font-family:'Fraunces',serif; font-style:italic; font-size:24px; color:var(--text); text-align:center;">Would you like to go through the interview process so we can get to know you and your business?</h2>
+    <h2 id="interview-heading" style="font-family:'Fraunces',serif; font-style:italic; font-size:24px; color:var(--text); text-align:center;">Would you like to go through the interview process so we can get to know you and your business?</h2>
     <div class="choice-buttons">
       <button class="choice-btn" id="interview-yes">
-        <span class="choice-label">Yes, let's do it</span>
+        <span class="choice-label" id="interview-yes-label">Yes, let's do it</span>
       </button>
       <button class="choice-btn" id="interview-skip">
         <span class="choice-label">No, skip for now</span>
@@ -1031,45 +1031,59 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   ctx.resume().then(() => ctx.close());
 
-  // Check if new user
-  try {
-    const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
-    if (ctxResp.ok) {
-      const ctxData = await ctxResp.json();
-      if (ctxData.is_new) {
-        isNewUser = true;
-        const overlay = document.getElementById('interview-choice');
-        overlay.style.display = 'flex';
-        return;
+  // Check if user needs interview (non-admin only)
+  let interviewResuming = false;
+  if (userRole !== 'admin') {
+    try {
+      const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
+      if (ctxResp.ok) {
+        const ctxData = await ctxResp.json();
+        if (ctxData.is_new) {
+          // Brand new user, never interviewed
+          isNewUser = true;
+          document.getElementById('interview-heading').textContent = 'Would you like to go through the interview process so we can get to know you and your business?';
+          document.getElementById('interview-yes-label').textContent = "Yes, let's do it";
+          const overlay = document.getElementById('interview-choice');
+          overlay.style.display = 'flex';
+          return;
+        } else if (!ctxData.interview_complete) {
+          // Partial interview from a previous session
+          interviewResuming = true;
+          document.getElementById('interview-heading').textContent = "Hey! Last time we started getting to know you but didn't finish. Want to pick up where we left off?";
+          document.getElementById('interview-yes-label').textContent = "Yes, let's continue";
+          const overlay = document.getElementById('interview-choice');
+          overlay.style.display = 'flex';
+          return;
+        }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   messageInput.focus();
 });
 
 // Interview choice handlers
+let isResumeInterview = false;
+
 document.getElementById('interview-yes').addEventListener('click', () => {
   document.getElementById('interview-choice').style.display = 'none';
   messageInput.focus();
-  // Auto-send a greeting to trigger interview mode
-  conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
-  addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
+
+  if (isNewUser) {
+    conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
+    addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
+  } else {
+    // Resuming partial interview
+    conversationHistory.push({ role: 'user', content: "Hey team, I'm back! Let's pick up where we left off on the interview." });
+    addMessage('user', "Hey team, I'm back! Let's pick up where we left off on the interview.");
+  }
   sendMessageDirect();
 });
 
-document.getElementById('interview-skip').addEventListener('click', async () => {
+document.getElementById('interview-skip').addEventListener('click', () => {
   document.getElementById('interview-choice').style.display = 'none';
   messageInput.focus();
-  isNewUser = false;
-  // Create empty context so they won't be prompted again
-  try {
-    await apiFetch('/api/user-context', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_label: userLabel, context_text: '' }),
-    });
-  } catch (e) {}
+  // Just dismiss for this session. Don't write anything. They'll be asked again next time.
 });
 
 // ---- TIMER ----
@@ -1195,6 +1209,16 @@ async function _streamResponse() {
           } catch (e) {}
         }
       }
+    }
+
+    // Check for interview completion marker
+    if (fullText.includes('[INTERVIEW_COMPLETE]')) {
+      fullText = fullText.replace('[INTERVIEW_COMPLETE]', '').trim();
+      apiFetch('/api/user-context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_label: userLabel, interview_complete: true, context_text: '', append: true }),
+      }).catch(console.error);
     }
 
     conversationHistory.push({ role: 'assistant', content: fullText });

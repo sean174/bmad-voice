@@ -113,13 +113,13 @@ async function getUserContext(userLabel) {
       )
     `);
     const result = await pool.query(
-      'SELECT context_text FROM user_context WHERE user_label = $1',
+      'SELECT context_text, interview_complete FROM user_context WHERE user_label = $1',
       [userLabel]
     );
-    if (result.rows.length === 0) return { context: '', isNew: true };
-    return { context: result.rows[0].context_text, isNew: false };
+    if (result.rows.length === 0) return { context: '', isNew: true, interviewComplete: false };
+    return { context: result.rows[0].context_text, isNew: false, interviewComplete: !!result.rows[0].interview_complete };
   } catch (e) {
-    return { context: '', isNew: false };
+    return { context: '', isNew: false, interviewComplete: false };
   } finally {
     await pool.end();
   }
@@ -234,12 +234,29 @@ export default async function handler(req, res) {
   const managedMessages = summarizeOlderMessages(messages);
 
   // Load user context
-  const { context: userContext, isNew: isNewUser } = await getUserContext(user_label);
+  const { context: userContext, isNew: isNewUser, interviewComplete } = await getUserContext(user_label);
 
   let systemPrompt = SYSTEM_PROMPT;
 
-  // For brand new users with no context on their first message, run interview mode
-  if (isNewUser && messages.length === 1) {
+  // For non-admin users resuming a partial interview
+  if (!isAdminUser(user_label) && !isNewUser && !interviewComplete && userContext && messages.length === 1) {
+    systemPrompt = SYSTEM_PROMPT + `\n\n--- RESUME INTERVIEW MODE ---
+This user started the get-to-know-you interview in a previous session but didn't finish all 15 topics.
+
+Here is what the team already knows about them:
+${userContext}
+
+Review what has already been covered. Warmly welcome them back and briefly summarize what you already know. Then tell them which topic you'd like to pick up on next. Ask if they have anything to add to what was already covered before moving forward.
+
+Remind them: if they think of something later about an earlier topic, they can always bring it up and the team will know where to file it.
+
+Continue through the remaining topics from the full list (see interview instructions). Same rules apply: one topic at a time, follow-up questions before moving on, 2-3 agents per round.
+
+When all 15 topics are covered, include the marker [INTERVIEW_COMPLETE] at the very end of your response (after your summary). This signals the system to mark the interview as done.`;
+  }
+
+  // For brand new non-admin users with no context on their first message, run interview mode
+  if (!isAdminUser(user_label) && isNewUser && messages.length === 1) {
     systemPrompt = SYSTEM_PROMPT + `\n\n--- INTERVIEW MODE ---
 This is a brand new user the team has never met. Before brainstorming, the team needs to get to know them through a thorough but warm interview.
 
@@ -287,6 +304,9 @@ AFTER ALL TOPICS ARE COVERED:
 - Let the user know that everything has been saved and the team will remember it across all future sessions.
 - Tell them they can download a file of this session to drop into their own Claude on their computer, so both systems stay in sync.
 - Invite them to bring their first brainstorming topic whenever they're ready.
+- Include the marker [INTERVIEW_COMPLETE] at the very end of your final response (after your summary). This signals the system to mark the interview as done.
+
+Remind the user throughout: if they think of something later about an earlier topic, they can always bring it up in a future session and the team will know where to file it.
 
 The user's first message will likely be a greeting since they chose to do the interview. Start with a warm welcome from 2-3 agents, then begin with topic 1.`;
   }
