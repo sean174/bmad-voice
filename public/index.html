@@ -1176,17 +1176,31 @@
   <div class="login-fade" data-fade="1"><span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span></div>
   <div class="login-fade" data-fade="2"><h1 class="headline" style="margin-bottom:4px;">Welcome back.</h1></div>
   <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Your advisory team is ready.</p></div>
-  <div class="login-fade" data-fade="4" style="margin-top:32px;"><p class="subtext" style="margin:0;">Sign in to start a new session.</p></div>
-  <div class="login-fade" data-fade="5" style="margin-top:24px;">
-    <form id="login-form" onsubmit="return false">
-      <label class="input-label" for="login-password">Password</label>
-      <div style="position:relative; width:100%; margin-bottom:16px;">
-        <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:52px; width:100%; box-sizing:border-box; margin-bottom:0;">
-        <svg id="pw-eye" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--text-dim); cursor:pointer;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      </div>
-      <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
-      <div id="login-error"></div>
-    </form>
+  <div class="login-fade" data-fade="4" style="margin-top:24px;"><span class="section-label" style="font-size:9px; letter-spacing:4px; color:var(--red);">Invitation Only</span></div>
+  <div class="login-fade" data-fade="5" style="margin-top:16px;">
+    <!-- Login form -->
+    <div id="login-panel">
+      <form id="login-form" onsubmit="return false">
+        <label class="input-label" for="login-password">Invite Code</label>
+        <div style="position:relative; width:100%; margin-bottom:16px;">
+          <input type="password" id="login-password" class="input-field" placeholder="Enter your invite code" autofocus style="padding-right:52px; width:100%; box-sizing:border-box; margin-bottom:0;">
+          <svg id="pw-eye" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--text-dim); cursor:pointer;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+        <div id="login-error"></div>
+      </form>
+      <button id="show-waitlist-btn" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Don't have a code? Join the waitlist</button>
+    </div>
+    <!-- Waitlist form -->
+    <div id="waitlist-panel" style="display:none;">
+      <form id="waitlist-form" onsubmit="return false">
+        <label class="input-label" for="waitlist-email">Email</label>
+        <input type="email" id="waitlist-email" class="input-field" placeholder="you@example.com" style="width:100%; box-sizing:border-box; margin-bottom:16px;">
+        <button type="submit" id="waitlist-btn" class="btn-primary">Join the Waitlist</button>
+        <div id="waitlist-msg" style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-top:12px; min-height:16px;"></div>
+      </form>
+      <button id="show-login-btn" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Already have a code? Sign in</button>
+    </div>
   </div>
   <div class="login-fade" data-fade="6"><button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset &amp; Reload</button></div>
 </div>
@@ -1408,6 +1422,48 @@ document.getElementById('pw-eye').addEventListener('click', () => {
   }
 });
 
+// ---- WAITLIST TOGGLE ----
+document.getElementById('show-waitlist-btn').addEventListener('click', () => {
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('waitlist-panel').style.display = 'block';
+  document.getElementById('waitlist-email').focus();
+});
+document.getElementById('show-login-btn').addEventListener('click', () => {
+  document.getElementById('waitlist-panel').style.display = 'none';
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('login-password').focus();
+});
+document.getElementById('waitlist-form').addEventListener('submit', async () => {
+  const email = document.getElementById('waitlist-email').value.trim();
+  const msgEl = document.getElementById('waitlist-msg');
+  const btn = document.getElementById('waitlist-btn');
+  if (!email) { msgEl.textContent = 'Enter your email'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  try {
+    const res = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      msgEl.style.color = 'var(--red)';
+      msgEl.textContent = "You're on the list. We'll be in touch.";
+      document.getElementById('waitlist-email').disabled = true;
+      btn.style.display = 'none';
+    } else {
+      msgEl.textContent = data.error || 'Something went wrong';
+      btn.disabled = false;
+      btn.textContent = 'Join the Waitlist';
+    }
+  } catch (e) {
+    msgEl.textContent = 'Something went wrong';
+    btn.disabled = false;
+    btn.textContent = 'Join the Waitlist';
+  }
+});
+
 // Check if already logged in
 if (sessionToken) {
   if (userRole !== 'admin') document.getElementById('session-cost').style.display = 'none';
@@ -1421,7 +1477,7 @@ document.getElementById('login-form').addEventListener('submit', async () => {
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
 
-  if (!pw) { errEl.textContent = 'Enter a password'; return; }
+  if (!pw) { errEl.textContent = 'Enter your invite code'; return; }
 
   const loginBtn = document.getElementById('login-btn');
   loginBtn.disabled = true;
