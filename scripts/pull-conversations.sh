@@ -82,4 +82,21 @@ print(f'Saved {len(messages)} message(s) across {len(sessions)} session(s) to {f
 # Update last pull timestamp
 python3 -c "from datetime import datetime; print(datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S'))" > "$LAST_PULL_FILE"
 
-echo "$(date): Pull complete."
+# Clean up conversation_log entries older than 7 days
+CLEANUP=$(python3 -c "
+import urllib.request, json
+url = '${API_URL}?secret=${SECRET}&days=7'
+req = urllib.request.Request(url, method='DELETE')
+req.add_header('x-session-token', '${SECRET}')
+try:
+    resp = urllib.request.urlopen(req)
+    data = json.loads(resp.read())
+    deleted = data.get('deleted', 0)
+    if deleted > 0:
+        print(f'Cleaned up {deleted} old entries')
+    else:
+        print('No old entries to clean up')
+except Exception as e:
+    print(f'Cleanup failed: {e}')
+")
+echo "$(date): Pull complete. $CLEANUP"

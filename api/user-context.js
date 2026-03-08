@@ -64,7 +64,8 @@ export default async function handler(req, res) {
           [user_label]
         );
         const current = existing.rows.length > 0 ? existing.rows[0].context_text : '';
-        const updated = (current + '\n' + context_text).trim().substring(0, 8000);
+        const combined = (current + '\n' + context_text).trim();
+        const updated = combined.length > 8000 ? combined.slice(-8000) : combined;
 
         if (interview_complete !== undefined) {
           await pool.query(

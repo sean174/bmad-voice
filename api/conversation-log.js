@@ -61,6 +61,21 @@ export default async function handler(req, res) {
       return res.status(200).json({ messages: result.rows });
     }
 
+    if (req.method === 'DELETE') {
+      const { secret, days } = req.query || {};
+      if (secret !== process.env.SESSION_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const cutoffDays = parseInt(days) || 7;
+      const result = await pool.query(
+        'DELETE FROM conversation_log WHERE created_at < NOW() - INTERVAL \'1 day\' * $1',
+        [cutoffDays]
+      );
+
+      return res.status(200).json({ deleted: result.rowCount });
+    }
+
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('Conversation log error:', err);
