@@ -158,51 +158,15 @@
     .screen { display: none; position: relative; z-index: 1; }
     .screen.active { display: flex; }
 
-    /* ---- SPLASH SCREEN ---- */
-    #splash-screen {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg);
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      transition: opacity 0.5s ease;
-    }
-    #splash-screen.fade-out { opacity: 0; pointer-events: none; }
-    #splash-screen img { width: 100px; height: 100px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; }
-    #splash-screen img.show { opacity: 1; }
-
-    .flip-text {
-      display: flex;
-      gap: 2px;
-      justify-content: center;
-      overflow: hidden;
-    }
-    .flip-char {
-      display: inline-block;
-      font-family: 'Space Mono', monospace;
-      font-weight: 700;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: var(--text);
+    /* ---- LOGIN FADE-IN ---- */
+    .login-fade {
       opacity: 0;
-      transform: rotateX(-90deg);
-      transition: all 0.15s ease;
+      transform: translateY(8px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
     }
-    .flip-char.show {
+    .login-fade.show {
       opacity: 1;
-      transform: rotateX(0deg);
-    }
-    .flip-line2 .flip-char {
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 400;
-      letter-spacing: 0;
-      text-transform: none;
-      color: var(--text-dim);
+      transform: translateY(0);
     }
 
     /* ---- SCREEN 1: LOGIN ---- */
@@ -1177,29 +1141,25 @@
   <p id="rate-limit-msg">You've hit the limit. Take a breather and try again shortly.</p>
 </div>
 
-<!-- SPLASH SCREEN -->
-<div id="splash-screen">
-  <img src="/icons/icon-192.png" alt="" id="splash-icon">
-  <div class="flip-text" id="flip-title"></div>
-  <div class="flip-text flip-line2" id="flip-tagline"></div>
-</div>
-
 <!-- SCREEN 1: LOGIN -->
 <div id="login-screen" class="screen active">
-  <img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;">
-  <span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span>
-  <h1 class="headline">Welcome back.</h1>
-  <p class="subtext">Sign in to start a session.</p>
-  <form id="login-form" onsubmit="return false">
-    <label class="input-label" for="login-password">Password</label>
-    <div style="position:relative; display:flex; align-items:center;">
-      <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:48px; width:100%;">
-      <button type="button" id="pw-toggle" style="position:absolute; right:12px; top:0; bottom:0; margin:auto; height:20px; background:none; border:none; color:var(--text-dim); cursor:pointer; padding:0; line-height:0; display:flex; align-items:center; justify-content:center;" aria-label="Show password"><svg id="pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-    </div>
-    <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
-    <div id="login-error"></div>
-  </form>
-  <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset &amp; Reload</button>
+  <div class="login-fade" data-fade="0"><img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;"></div>
+  <div class="login-fade" data-fade="1"><span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span></div>
+  <div class="login-fade" data-fade="2"><h1 class="headline" style="margin-bottom:4px;">Welcome back.</h1></div>
+  <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Your advisory team is ready.</p></div>
+  <div class="login-fade" data-fade="4" style="margin-top:32px;"><p class="subtext" style="margin:0;">Sign in to start a new session.</p></div>
+  <div class="login-fade" data-fade="5">
+    <form id="login-form" onsubmit="return false">
+      <label class="input-label" for="login-password">Password</label>
+      <div style="position:relative; display:flex; align-items:center;">
+        <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:48px; width:100%;">
+        <button type="button" id="pw-toggle" style="position:absolute; right:12px; top:0; bottom:0; margin:auto; height:20px; background:none; border:none; color:var(--text-dim); cursor:pointer; padding:0; line-height:0; display:flex; align-items:center; justify-content:center;" aria-label="Show password"><svg id="pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+      <div id="login-error"></div>
+    </form>
+  </div>
+  <div class="login-fade" data-fade="6"><button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset &amp; Reload</button></div>
 </div>
 
 <!-- SCREEN 2: START SESSION -->
@@ -1282,55 +1242,18 @@
 </div>
 
 <script>
-// ---- SPLASH SCREEN ----
+// ---- LOGIN FADE-IN ----
 (function() {
-  // Skip splash if already logged in (returning to app)
+  const fadeEls = document.querySelectorAll('.login-fade');
+  // If returning user, show everything immediately
   if (localStorage.getItem('bmad_token')) {
-    document.getElementById('splash-screen').style.display = 'none';
+    fadeEls.forEach(el => el.classList.add('show'));
   } else {
-    const title = 'MASTERMIND';
-    const tagline = 'Your advisory board is ready.';
-    const titleEl = document.getElementById('flip-title');
-    const taglineEl = document.getElementById('flip-tagline');
-    const icon = document.getElementById('splash-icon');
-
-    // Build character spans
-    for (const ch of title) {
-      const span = document.createElement('span');
-      span.className = 'flip-char';
-      span.textContent = ch === ' ' ? '\u00A0' : ch;
-      titleEl.appendChild(span);
-    }
-    for (const ch of tagline) {
-      const span = document.createElement('span');
-      span.className = 'flip-char';
-      span.textContent = ch === ' ' ? '\u00A0' : ch;
-      taglineEl.appendChild(span);
-    }
-
-    // Animate: icon fades in, then title flips, then tagline flips
-    setTimeout(() => icon.classList.add('show'), 100);
-
-    const titleChars = titleEl.querySelectorAll('.flip-char');
-    const taglineChars = taglineEl.querySelectorAll('.flip-char');
-
-    titleChars.forEach((ch, i) => {
-      setTimeout(() => ch.classList.add('show'), 300 + i * 35);
+    // Stagger fade-in: each element appears 250ms after the previous
+    fadeEls.forEach(el => {
+      const idx = parseInt(el.dataset.fade);
+      setTimeout(() => el.classList.add('show'), 200 + idx * 250);
     });
-
-    const taglineStart = 300 + titleChars.length * 35 + 150;
-    taglineChars.forEach((ch, i) => {
-      setTimeout(() => ch.classList.add('show'), taglineStart + i * 20);
-    });
-
-    // Fade out splash and show login
-    const totalTime = taglineStart + taglineChars.length * 20 + 600;
-    setTimeout(() => {
-      document.getElementById('splash-screen').classList.add('fade-out');
-      setTimeout(() => {
-        document.getElementById('splash-screen').style.display = 'none';
-      }, 500);
-    }, totalTime);
   }
 })();
 
@@ -1805,6 +1728,11 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
     if (ctxResp.ok) userData = await ctxResp.json();
   } catch (e) {}
+
+  // Buddy always gets the first-time experience (for auditing)
+  if (userLabel === 'buddy') {
+    localStorage.removeItem('bmad_tour_done_buddy');
+  }
 
   const tourDone = localStorage.getItem('bmad_tour_done_' + userLabel);
   const lastNudge = localStorage.getItem('bmad_last_nudge_' + userLabel);
