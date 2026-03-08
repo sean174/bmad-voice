@@ -705,6 +705,34 @@
       flex: 1;
     }
 
+    /* Mic button */
+    #mic-btn {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--text-dim);
+      background: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      padding: 0;
+    }
+    #mic-btn:hover { border-color: var(--text); color: var(--text); }
+    #mic-btn.recording {
+      border-color: var(--red);
+      background: var(--red);
+      color: white;
+      animation: mic-pulse 1s ease-in-out infinite;
+    }
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(229,62,62,0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(229,62,62,0); }
+    }
+
     /* Stop button in controls */
     #stop-btn {
       display: none;
@@ -1233,6 +1261,7 @@
     <div id="speaking-label"></div>
     <div id="controls">
       <input type="text" id="message-input" class="input-field" placeholder="What's on your mind?" maxlength="10000" autocomplete="off">
+      <button id="mic-btn" aria-label="Voice input" style="display:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
       <button id="send-btn" class="btn-primary">Send</button>
     </div>
     <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
@@ -1599,7 +1628,7 @@ const TOUR_STEPS = [
   { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
   { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below' },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
-  { target: '#message-input', text: 'Type here, or use voice-to-text to talk to the team.', position: 'above' },
+  { target: '#message-input', text: 'Type here, or tap the mic button to talk to the team.', position: 'above' },
   { fullscreen: true, headline: "All done.", text: "Let's meet the team.", btnText: 'Meet the team' },
 ];
 
@@ -1797,6 +1826,85 @@ messageInput.addEventListener('keydown', (e) => {
     sendMessage();
   }
 });
+
+// ---- VOICE INPUT (Speech Recognition) ----
+const micBtn = document.getElementById('mic-btn');
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isRecording = false;
+
+if (SpeechRecognition) {
+  micBtn.style.display = 'flex';
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  let finalTranscript = '';
+  let preExistingText = '';
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += t;
+      } else {
+        interim += t;
+      }
+    }
+    // Show live transcription in the input field
+    const spacer = preExistingText ? ' ' : '';
+    messageInput.value = preExistingText + spacer + finalTranscript + interim;
+  };
+
+  recognition.onend = () => {
+    if (isRecording) {
+      // Auto-stopped (silence, etc.) - send if we have text
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      if (messageInput.value.trim()) {
+        sendMessage();
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== 'aborted') {
+      console.warn('Speech recognition error:', event.error);
+    }
+    isRecording = false;
+    micBtn.classList.remove('recording');
+  };
+
+  micBtn.addEventListener('click', () => {
+    if (isRecording) {
+      // Stop recording
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      recognition.stop();
+      // Send if we have text
+      setTimeout(() => {
+        if (messageInput.value.trim()) {
+          sendMessage();
+        }
+      }, 100);
+    } else {
+      // Start recording
+      finalTranscript = '';
+      preExistingText = messageInput.value.trim();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      try {
+        recognition.start();
+      } catch(e) {
+        // Already started
+        isRecording = false;
+        micBtn.classList.remove('recording');
+      }
+    }
+  });
+}
 
 async function sendMessageDirect() {
   if (isWaiting) return;
