@@ -8,7 +8,8 @@ export default function middleware(request) {
     url.pathname === '/manifest.json' ||
     url.pathname === '/api/login' ||
     url.pathname.startsWith('/avatars/') ||
-    url.pathname.startsWith('/public/')
+    url.pathname.startsWith('/icons/') ||
+    url.pathname === '/apple-touch-icon.png'
   ) {
     return;
   }
