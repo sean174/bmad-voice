@@ -9,18 +9,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Password required' });
   }
 
+  const inputPw = password.trim();
+
   // Format: label:password:role,label:password:role
   // Example: sean:mypass123:admin,jake:jakepass:guest
   const entries = (process.env.AUTH_PASSWORDS || '').split(',').map(e => e.trim()).filter(Boolean);
 
   for (const entry of entries) {
-    const parts = entry.split(':');
+    const parts = entry.split(':').map(p => p.trim());
     if (parts.length === 3) {
       const [label, pass, role] = parts;
-      if (pass === password) {
+      if (pass === inputPw) {
         return res.status(200).json({ token: process.env.SESSION_SECRET, role, label });
       }
-    } else if (entry === password) {
+    } else if (entry.trim() === inputPw) {
       // Backward compatible: plain password still works as guest
       return res.status(200).json({ token: process.env.SESSION_SECRET, role: 'guest', label: 'unknown' });
     }
