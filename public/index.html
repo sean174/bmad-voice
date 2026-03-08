@@ -1631,7 +1631,7 @@ const TOUR_STEPS = [
   { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
   { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below' },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
-  { target: '#message-input', text: 'Type here, or tap the mic button to talk to the team.', position: 'above' },
+  { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to the team.' : 'Type here, or tap the mic button to talk to the team.', position: 'above' },
   { fullscreen: true, headline: "All done.", text: "Let's meet the team.", btnText: 'Meet the team' },
 ];
 
