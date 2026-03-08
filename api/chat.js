@@ -100,6 +100,31 @@ async function getAdminContext() {
   }
 }
 
+async function getUserContext(userLabel) {
+  if (!process.env.POSTGRES_URL || !userLabel) return { context: '', isNew: false };
+  const { Pool } = require('@neondatabase/serverless');
+  const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_context (
+        user_label TEXT PRIMARY KEY,
+        context_text TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const result = await pool.query(
+      'SELECT context_text FROM user_context WHERE user_label = $1',
+      [userLabel]
+    );
+    if (result.rows.length === 0) return { context: '', isNew: true };
+    return { context: result.rows[0].context_text, isNew: false };
+  } catch (e) {
+    return { context: '', isNew: false };
+  } finally {
+    await pool.end();
+  }
+}
+
 function isAdminUser(userLabel) {
   const entries = (process.env.AUTH_PASSWORDS || '').split(',').map(e => e.trim()).filter(Boolean);
   for (const entry of entries) {
@@ -208,12 +233,37 @@ export default async function handler(req, res) {
 
   const managedMessages = summarizeOlderMessages(messages);
 
-  // Load business context for admin users only
+  // Load user context
+  const { context: userContext, isNew: isNewUser } = await getUserContext(user_label);
+
   let systemPrompt = SYSTEM_PROMPT;
+
+  // For brand new users with no context on their first message, run interview mode
+  if (isNewUser && messages.length === 1) {
+    systemPrompt = SYSTEM_PROMPT + `\n\n--- INTERVIEW MODE ---
+This is a brand new user the team has never met. Before brainstorming, the team needs to get to know them.
+
+Run a warm, natural interview. The agents should take turns asking questions across these areas:
+- Who they are and what they do (work, role, business, or personal focus)
+- What they're working on or thinking about lately
+- What kind of help they're looking for from brainstorming sessions
+- Their style preferences (direct feedback vs. gentle, fast-paced vs. thorough)
+
+Keep it conversational, not interrogation-style. 2-3 agents per round. Build on their answers naturally.
+After 3-4 rounds of questions, let them know the team feels ready and invite them to bring their first topic.
+The user's first message may be a greeting or a topic. If it's a greeting, start the interview. If it's already a topic, briefly introduce the team and ask a couple quick get-to-know-you questions before diving in.`;
+  }
+
+  // Load existing user context into prompt
+  if (userContext) {
+    systemPrompt += '\n\n--- ABOUT THIS USER (from previous sessions) ---\n' + userContext;
+  }
+
+  // Load business context for admin users
   if (isAdminUser(user_label)) {
     const context = await getAdminContext();
     if (context) {
-      systemPrompt = SYSTEM_PROMPT + '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
+      systemPrompt += '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
     }
   }
 

@@ -947,8 +947,16 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
+function updateStartScreen() {
+  const name = userLabel.charAt(0).toUpperCase() + userLabel.slice(1);
+  if (name && name !== 'Unknown') {
+    document.querySelector('#start-screen .headline').innerHTML = `Hey, ${name}.`;
+  }
+}
+
 // Check if already logged in
 if (sessionToken) {
+  updateStartScreen();
   showScreen('start-screen');
 }
 
@@ -980,6 +988,7 @@ document.getElementById('login-form').addEventListener('submit', async () => {
       localStorage.setItem('bmad_token', data.token);
       localStorage.setItem('bmad_role', userRole);
       localStorage.setItem('bmad_label', userLabel);
+      updateStartScreen();
       showScreen('start-screen');
     } else {
       errEl.textContent = 'Wrong password';
@@ -1524,6 +1533,63 @@ Include the session cost in the summary.`;
     }).catch(console.error);
 
     showToast('Session saved', 'success');
+
+    // Extract memories and save to user context
+    try {
+      const memoryPrompt = `Based on this conversation, extract the key facts worth remembering about this user for future sessions. Include:
+- Who they are, what they do
+- Projects or goals they mentioned
+- Preferences they expressed
+- Key decisions made
+- Important context for next time
+
+Format as a concise bullet list. Only include facts, not opinions. Keep it under 500 words.`;
+
+      const memResp = await apiFetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...conversationHistory, { role: 'user', content: memoryPrompt }],
+          user_label: userLabel,
+        }),
+      });
+
+      if (memResp.ok) {
+        const memReader = memResp.body.getReader();
+        const memDecoder = new TextDecoder();
+        let memoryText = '';
+        while (true) {
+          const { done, value } = await memReader.read();
+          if (done) break;
+          for (const line of memDecoder.decode(value).split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (d.type === 'text') memoryText += d.content;
+              } catch (e) {}
+            }
+          }
+        }
+
+        // Strip agent tags from memory extraction
+        memoryText = memoryText.replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*/g, '').trim();
+
+        if (memoryText) {
+          const dateStamp = new Date().toLocaleDateString();
+          await apiFetch('/api/user-context', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_label: userLabel,
+              context_text: `\n--- Session ${dateStamp} ---\n${memoryText}`,
+              append: true,
+            }),
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Memory extraction error:', e);
+    }
 
     // Export to Claude if requested
     if (sendToClaude) {
