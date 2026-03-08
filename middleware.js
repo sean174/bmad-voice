@@ -7,6 +7,7 @@ export default function middleware(request) {
     url.pathname === '/index.html' ||
     url.pathname === '/manifest.json' ||
     url.pathname === '/api/login' ||
+    url.pathname === '/api/migrate' ||
     url.pathname.startsWith('/avatars/')
   ) {
     return;
