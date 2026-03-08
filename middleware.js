@@ -1,9 +1,6 @@
-import { next } from '@vercel/edge';
-
 export default function middleware(request) {
-  // Skip auth for manifest.json (PWA needs it)
   if (request.url.includes('manifest.json')) {
-    return next();
+    return;
   }
 
   const authHeader = request.headers.get('authorization');
@@ -11,9 +8,7 @@ export default function middleware(request) {
   if (!authHeader || !authHeader.startsWith('Basic ')) {
     return new Response('Authentication required', {
       status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="BMAD Voice"',
-      },
+      headers: { 'WWW-Authenticate': 'Basic realm="BMAD Voice"' },
     });
   }
 
@@ -30,15 +25,11 @@ export default function middleware(request) {
   if (!validPasswords.includes(password)) {
     return new Response('Invalid credentials', {
       status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="BMAD Voice"',
-      },
+      headers: { 'WWW-Authenticate': 'Basic realm="BMAD Voice"' },
     });
   }
-
-  return next();
 }
 
 export const config = {
-  matcher: ['/', '/index.html', '/api/:path*'],
+  matcher: ['/((?!manifest.json).*)'],
 };
