@@ -738,7 +738,7 @@
   <h1 class="headline">Ready when<br>you are.</h1>
   <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
-  <span class="privacy-note">Agents respond with voice by default. Toggle in the header to read instead.</span>
+  <span class="privacy-note">Text by default. Turn on voices in the header to hear your team speak.</span>
 </div>
 
 <!-- SCREEN 3: CHAT -->
@@ -747,7 +747,7 @@
     <div id="header-title">BMAD Voice</div>
     <div id="session-cost">$0.00</div>
     <div id="session-timer">00:00</div>
-    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;" title="Toggle agent voices on or off">Voice On</button>
+    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voices Off</button>
     <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
   </div>
 
@@ -823,7 +823,7 @@ let totalInputTokens = 0;
 let totalOutputTokens = 0;
 let totalCartesiaChars = 0;
 let isPlaying = false;
-let voiceEnabled = true;
+let voiceEnabled = false;
 let audioQueue = [];
 let currentAudio = null;
 let abortController = null;
@@ -1524,9 +1524,9 @@ function showRateLimit(msg) {
 const voiceToggle = document.getElementById('voice-toggle');
 voiceToggle.addEventListener('click', () => {
   voiceEnabled = !voiceEnabled;
-  voiceToggle.textContent = voiceEnabled ? 'Voice On' : 'Voice Off';
-  voiceToggle.style.borderColor = voiceEnabled ? 'var(--border2)' : 'var(--red)';
-  voiceToggle.style.color = voiceEnabled ? 'var(--text-mid)' : 'var(--red)';
+  voiceToggle.textContent = voiceEnabled ? 'Voices On' : 'Voices Off';
+  voiceToggle.style.borderColor = voiceEnabled ? 'var(--red)' : 'var(--border2)';
+  voiceToggle.style.color = voiceEnabled ? 'var(--red)' : 'var(--text-mid)';
   if (!voiceEnabled) stopAudio();
 });
 
