@@ -1237,11 +1237,15 @@
   <div id="download-screen">
     <h2>Your session is ready.</h2>
     <div id="download-status">Preparing summary...</div>
-    <div id="download-buttons" style="display:none; width:100%; max-width:320px;">
-      <button id="download-pdf-btn" class="btn-primary" style="width:100%; margin-bottom:8px;">Download PDF</button>
-      <p style="font-size:12px; color:var(--text-dim); margin:0 0 16px; font-family:'DM Sans',sans-serif;">If you don't have Claude yet</p>
-      <button id="download-md-btn" class="btn-primary" style="width:100%; background:var(--bg3); border:1px solid var(--border2);">Download for Claude</button>
-      <p style="font-size:12px; color:var(--text-dim); margin:4px 0 0; font-family:'DM Sans',sans-serif;">Drop this file right into Claude to keep going</p>
+    <div id="download-buttons" style="display:none; width:100%; max-width:360px;">
+      <h3 style="font-family:'DM Sans',sans-serif; font-size:18px; color:var(--text); margin:0 0 10px; font-weight:500;">If you don't have Claude yet</h3>
+      <button id="download-pdf-btn" class="btn-primary" style="width:100%;">Download PDF</button>
+
+      <div style="margin-top:32px;">
+        <h3 style="font-family:'DM Sans',sans-serif; font-size:18px; color:var(--text); margin:0 0 10px; font-weight:500;">If you already have Claude installed</h3>
+        <button id="download-md-btn" class="btn-primary" style="width:100%; background:var(--bg3); border:1px solid var(--border2);">Download .md for Claude</button>
+        <p style="font-size:12px; color:var(--text-dim); margin:6px 0 0; font-family:'DM Sans',sans-serif;">Drop this file right into Claude to keep going</p>
+      </div>
     </div>
     <div class="countdown" id="logout-countdown" style="display:none;"></div>
     <button id="logout-now-btn" class="btn-secondary" style="display:none;">Log Out Now</button>
