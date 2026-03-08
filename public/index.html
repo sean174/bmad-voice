@@ -1381,10 +1381,22 @@ const TEAM_INTROS = {
 };
 
 function showTeamIntros() {
+  const card = document.createElement('div');
+  card.className = 'prompt-card';
+
+  card.innerHTML = `
+    <div class="prompt-headline">Meet Your New Advisory Board.</div>
+    <div class="prompt-body">Eight advisors, each with a different lens on your business. They challenge each other, push back, and build on ideas together.</div>
+    <div class="prompt-body">We remember everything. Anything we talk about today is saved, so you can pick up where you left off next time. When we're done, download your session summary and drop it into your own Claude to keep rolling.</div>
+  `;
+
   const order = ['STRATEGIST', 'ANALYST', 'PM', 'ARCHITECT', 'DEVELOPER', 'PROBLEM_SOLVER', 'BRAINSTORM_COACH', 'STORYTELLER'];
   for (const key of order) {
     const div = document.createElement('div');
     div.className = 'team-intro';
+    div.style.border = 'none';
+    div.style.background = 'transparent';
+    div.style.padding = '6px 0';
     const avatar = document.createElement('div');
     avatar.className = 'intro-avatar';
     const img = document.createElement('img');
@@ -1404,8 +1416,10 @@ function showTeamIntros() {
     content.appendChild(text);
     div.appendChild(avatar);
     div.appendChild(content);
-    chatArea.appendChild(div);
+    card.appendChild(div);
   }
+
+  chatArea.appendChild(card);
   scrollToBottom();
 }
 
@@ -1415,9 +1429,6 @@ function showSuggestedPrompts(showInterview) {
   card.id = 'prompt-card';
 
   card.innerHTML = `
-    <div class="prompt-headline">This is your team.</div>
-    <div class="prompt-body">Eight advisors, each with a different lens on your business. They challenge each other, push back, and build on ideas together.</div>
-    <div class="prompt-body">We remember everything. Anything we talk about today is saved, so you can pick up where you left off next time. When we're done, download your session summary and drop it into your own Claude to keep rolling.</div>
     <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use us:</div>
     <ul class="prompt-uses">
       <li>Think through your business strategy and positioning</li>
