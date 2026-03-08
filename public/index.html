@@ -800,7 +800,10 @@
   <p class="subtext">Sign in to start a session.</p>
   <form id="login-form" onsubmit="return false">
     <label class="input-label" for="login-password">Password</label>
-    <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus>
+    <div style="position:relative;">
+      <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:48px;">
+      <button type="button" id="pw-toggle" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:18px; padding:8px;" aria-label="Show password">&#128065;</button>
+    </div>
     <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
     <div id="login-error"></div>
   </form>
@@ -965,6 +968,14 @@ function updateStartScreen() {
     document.querySelector('#start-screen .headline').innerHTML = `Hey, ${name}.`;
   }
 }
+
+// Password visibility toggle
+document.getElementById('pw-toggle').addEventListener('click', () => {
+  const pwField = document.getElementById('login-password');
+  const isHidden = pwField.type === 'password';
+  pwField.type = isHidden ? 'text' : 'password';
+  document.getElementById('pw-toggle').innerHTML = isHidden ? '&#128064;' : '&#128065;';
+});
 
 // Check if already logged in
 if (sessionToken) {
