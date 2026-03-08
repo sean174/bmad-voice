@@ -22,6 +22,7 @@ function cleanTextForSpeech(text) {
     .replace(/https?:\/\/\S+/g, '') // URLs
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // markdown links -> text
     .replace(/[_#>\-|]/g, '')       // markdown formatting
+    .replace(/\bAHA\b/g, 'ah-ha')  // pronounce as word not letters
     .replace(/\n{2,}/g, '. ')       // double newlines to pause
     .replace(/\n/g, ' ')            // single newlines to space
     .replace(/\s{2,}/g, ' ')        // collapse whitespace
