@@ -1217,7 +1217,7 @@
   <div id="controls-wrap">
     <div id="speaking-label"></div>
     <div id="controls">
-      <input type="text" id="message-input" class="input-field" placeholder="What's on your mind?" maxlength="2000" autocomplete="off">
+      <input type="text" id="message-input" class="input-field" placeholder="What's on your mind?" maxlength="10000" autocomplete="off">
       <button id="send-btn" class="btn-primary">Send</button>
     </div>
     <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
@@ -1975,6 +1975,7 @@ async function prefetchAudio(block) {
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
       console.error('Speak API error for', block.agent, ':', response.status, errText);
+      showToast('Voice error: ' + response.status + ' for ' + (block.agent || 'agent'), 'error');
       return null;
     }
 
@@ -1987,7 +1988,10 @@ async function prefetchAudio(block) {
     const audioBlob = await response.blob();
     return URL.createObjectURL(audioBlob);
   } catch (err) {
-    if (err.name !== 'AbortError') console.error('Audio prefetch error:', err);
+    if (err.name !== 'AbortError') {
+      console.error('Audio prefetch error:', err);
+      showToast('Voice failed for ' + (block.agent || 'agent'), 'error');
+    }
     return null;
   }
 }
