@@ -1449,7 +1449,7 @@ Include the session cost in the summary.`;
     dlBtn.textContent = 'Download Session';
     dlBtn.style.marginTop = '16px';
     dlBtn.addEventListener('click', () => {
-      const lines = [`# Brainstorm Session\n`, `**Date:** ${new Date().toLocaleDateString()}\n`, `**Cost:** $${sessionCost.toFixed(4)}\n`, `---\n`, `## Summary\n`, displayText, `\n---\n`, `## Full Conversation\n`];
+      const lines = [`# Brainstorm Session\n`, `**Date:** ${new Date().toLocaleDateString()}\n`, `---\n`, `## Summary\n`, displayText, `\n---\n`, `## Full Conversation\n`];
       for (const msg of conversationHistory) {
         if (msg.role === 'user') {
           lines.push(`### You\n${msg.content}\n`);
