@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Brainstorm</title>
+  <title>Mastermind</title>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -898,7 +898,7 @@
 <!-- SCREEN 1: LOGIN -->
 <div id="login-screen" class="screen active">
   <img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;">
-  <span class="section-label" style="font-size:15px; letter-spacing:6px;">Brainstorm</span>
+  <span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span>
   <h1 class="headline">Welcome back.</h1>
   <p class="subtext">Sign in to start a session.</p>
   <form id="login-form" onsubmit="return false">
@@ -915,9 +915,9 @@
 
 <!-- SCREEN 2: START SESSION -->
 <div id="start-screen" class="screen">
-  <span class="section-label">Brainstorm</span>
+  <span class="section-label">Mastermind</span>
   <h1 class="headline">Ready when<br>you are.</h1>
-  <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
+  <p class="subtext" id="last-session-text">Start a mastermind session with your team.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
   <span class="privacy-note">You'll choose to read or listen after your first message.</span>
 </div>
@@ -926,7 +926,7 @@
 <div id="chat-screen" class="screen">
   <div id="header">
     <div id="header-left">
-      <div id="header-title">Brainstorm</div>
+      <div id="header-title">Mastermind</div>
       <div id="header-stats">
         <div id="session-cost">$0.00</div>
         <div id="session-timer">00:00</div>
@@ -1022,7 +1022,7 @@ const AGENT_DISPLAY = {
   ARCHITECT: 'Winston',
   DEVELOPER: 'Amelia',
   STRATEGIST: 'Victor',
-  PROBLEM_SOLVER: 'Dr. Quinn',
+  PROBLEM_SOLVER: 'Emily',
   BRAINSTORM_COACH: 'Carson',
   STORYTELLER: 'Sophia',
 };
@@ -1853,7 +1853,7 @@ document.getElementById('end-download').addEventListener('click', async () => {
 
   // Generate AI summary
   try {
-    const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this brainstorming session including:
+    const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this mastermind session including:
 
 1. Executive Summary (3 to 5 bullet points of the most important outcomes)
 2. Key Insights and Decisions Made
@@ -1963,7 +1963,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
 
   dlBtn.addEventListener('click', () => {
     const lines = [
-      `# Brainstorm Session\n`,
+      `# Mastermind Session\n`,
       `**Date:** ${new Date().toLocaleDateString()}\n`,
       `---\n`,
       `## Summary\n`,
@@ -1982,7 +1982,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `brainstorm-${new Date().toISOString().slice(0,10)}.md`;
+    a.download = `mastermind-${new Date().toISOString().slice(0,10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
 

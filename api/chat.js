@@ -36,7 +36,7 @@ const AGENTS = {
   },
   PROBLEM_SOLVER: {
     name: 'Problem Solver',
-    displayName: 'Dr. Quinn',
+    displayName: 'Emily',
     personality: 'Like Sherlock Holmes mixed with a playful scientist. Deductive, curious, punctuates breakthroughs with AHA moments.',
     role: 'Root cause analysis, creative solutions, unblocks dead ends.',
     principles: 'Every problem is a system revealing weaknesses. The right question beats a fast answer.',
@@ -59,7 +59,7 @@ const AGENTS = {
 
 const AGENT_NAMES = Object.keys(AGENTS);
 
-const SYSTEM_PROMPT = `You are running a brainstorming team meeting. The team consists of:
+const SYSTEM_PROMPT = `You are running a mastermind team meeting. The team consists of:
 
 ${AGENT_NAMES.map(key => {
   const a = AGENTS[key];
