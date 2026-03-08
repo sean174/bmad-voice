@@ -60,7 +60,6 @@ export default async function handler(req, res) {
         transcript: cleanText,
         voice: { mode: 'id', id: voiceId },
         language: 'en',
-        speed: 'fast',
         output_format: {
           container: 'mp3',
           bit_rate: 128000,
@@ -71,8 +70,8 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errBody = await response.text();
-      console.error('Cartesia error:', errBody);
-      return res.status(502).json({ error: 'Voice service error' });
+      console.error('Cartesia error:', response.status, errBody);
+      return res.status(502).json({ error: 'Voice service error', detail: errBody, voiceId, agent });
     }
 
     const audioBuffer = await response.arrayBuffer();

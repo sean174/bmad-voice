@@ -1259,7 +1259,9 @@ async function playAgentAudio(blocks) {
       });
 
       if (!response.ok) {
-        console.error('Speak API error for', block.agent, ':', response.status, await response.text().catch(() => ''));
+        const errText = await response.text().catch(() => '');
+        console.error('Speak API error for', block.agent, ':', response.status, errText);
+        try { console.error('Speak detail:', JSON.parse(errText)); } catch(e) {}
         continue;
       }
 
