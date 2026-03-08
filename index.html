@@ -1217,6 +1217,31 @@ function displayAgentBlocks(blocks) {
 }
 
 // ---- AUDIO PLAYBACK ----
+async function prefetchAudio(block) {
+  try {
+    const response = await apiFetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: block.text, agent: block.agent }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      console.error('Speak API error for', block.agent, ':', response.status, errText);
+      return null;
+    }
+
+    const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || '0');
+    totalCartesiaChars += charCount;
+
+    const audioBlob = await response.blob();
+    return URL.createObjectURL(audioBlob);
+  } catch (err) {
+    if (err.name !== 'AbortError') console.error('Audio prefetch error:', err);
+    return null;
+  }
+}
+
 async function playAgentAudio(blocks) {
   audioQueue = [...blocks];
   isPlaying = true;
@@ -1241,6 +1266,9 @@ async function playAgentAudio(blocks) {
   speakingLabel.appendChild(pipRow);
   speakingLabel.style.display = 'block';
 
+  // Prefetch all audio in parallel
+  const audioPromises = blocks.map(block => prefetchAudio(block));
+
   for (let i = 0; i < audioQueue.length; i++) {
     if (!isPlaying) break;
 
@@ -1259,36 +1287,17 @@ async function playAgentAudio(blocks) {
     const lastMsg = msgs[msgs.length - 1];
     if (lastMsg) lastMsg.classList.add('speaking');
 
-    try {
-      const response = await apiFetch('/api/speak', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: block.text, agent: block.agent }),
-      });
+    // Wait for this audio to be ready (may already be done)
+    const audioUrl = await audioPromises[i];
 
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        console.error('Speak API error for', block.agent, ':', response.status, errText);
-        try { console.error('Speak detail:', JSON.parse(errText)); } catch(e) {}
-        continue;
-      }
-
-      const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || '0');
-      totalCartesiaChars += charCount;
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
+    if (audioUrl) {
       await new Promise((resolve) => {
-        if (!isPlaying) { resolve(); return; }
+        if (!isPlaying) { URL.revokeObjectURL(audioUrl); resolve(); return; }
         currentAudio = new Audio(audioUrl);
         currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.play().catch(resolve);
       });
-
-    } catch (err) {
-      if (err.name !== 'AbortError') console.error('Audio error:', err);
     }
 
     if (lastMsg) lastMsg.classList.remove('speaking');
