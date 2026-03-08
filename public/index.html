@@ -807,6 +807,7 @@
     <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
     <div id="login-error"></div>
   </form>
+  <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset &amp; Reload</button>
 </div>
 
 <!-- SCREEN 2: START SESSION -->
@@ -1016,10 +1017,10 @@ document.getElementById('login-form').addEventListener('submit', async () => {
       updateStartScreen();
       showScreen('start-screen');
     } else {
-      errEl.textContent = 'Wrong password';
+      errEl.textContent = data.error || 'Wrong password';
     }
   } catch (e) {
-    errEl.textContent = 'Connection error';
+    errEl.textContent = 'Connection error: ' + e.message;
   }
 
   loginBtn.disabled = false;
