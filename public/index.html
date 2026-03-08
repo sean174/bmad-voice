@@ -1176,12 +1176,12 @@
   <div class="login-fade" data-fade="2"><h1 class="headline" style="margin-bottom:4px;">Welcome back.</h1></div>
   <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Your advisory team is ready.</p></div>
   <div class="login-fade" data-fade="4" style="margin-top:32px;"><p class="subtext" style="margin:0;">Sign in to start a new session.</p></div>
-  <div class="login-fade" data-fade="5" style="margin-top:8px;">
+  <div class="login-fade" data-fade="5" style="margin-top:24px;">
     <form id="login-form" onsubmit="return false">
       <label class="input-label" for="login-password">Password</label>
-      <div style="position:relative;">
-        <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:48px; width:100%;">
-        <button type="button" id="pw-toggle" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; padding:8px; line-height:1; display:flex; align-items:center; justify-content:center;" aria-label="Show password"><svg id="pw-eye" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <div style="position:relative; display:inline-block; width:100%;">
+        <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus style="padding-right:52px; width:100%; box-sizing:border-box;">
+        <svg id="pw-eye" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--text-dim); cursor:pointer;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
       </div>
       <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
       <div id="login-error"></div>
@@ -1383,13 +1383,16 @@ function updateStartScreen() {
 }
 
 // Password visibility toggle
-document.getElementById('pw-toggle').addEventListener('click', () => {
+document.getElementById('pw-eye').addEventListener('click', () => {
   const pwField = document.getElementById('login-password');
+  const eye = document.getElementById('pw-eye');
   const isHidden = pwField.type === 'password';
   pwField.type = isHidden ? 'text' : 'password';
-  const eyeOpen = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-  const eyeSlash = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-  document.getElementById('pw-toggle').innerHTML = isHidden ? eyeSlash : eyeOpen;
+  if (isHidden) {
+    eye.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    eye.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
 });
 
 // Check if already logged in
