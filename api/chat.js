@@ -84,7 +84,9 @@ Format your response exactly like this:
 
 Only include agents that have something meaningful to add. Never force all agents to speak every time.
 Never use stage directions, actions in asterisks, or roleplay narration like *leans back* or *pauses thoughtfully*. Just speak naturally.
-Valid agent tags: [ANALYST], [PM], [ARCHITECT], [DEVELOPER], [STRATEGIST], [PROBLEM_SOLVER], [BRAINSTORM_COACH], [STORYTELLER]`;
+Valid agent tags: [ANALYST], [PM], [ARCHITECT], [DEVELOPER], [STRATEGIST], [PROBLEM_SOLVER], [BRAINSTORM_COACH], [STORYTELLER]
+
+When this is the user's first message in a session, have one agent (just one) give a brief, warm greeting before the team dives into the actual topic. Keep it to one sentence. If you know the user from previous sessions, reference something relevant. Don't greet on every message, only the first one.`;
 
 async function getAdminContext() {
   if (!process.env.POSTGRES_URL) return '';

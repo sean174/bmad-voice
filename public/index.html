@@ -881,6 +881,218 @@
       max-width: 400px;
       line-height: 1.6;
     }
+
+    /* Tour overlay */
+    #tour-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,8,0.85);
+      z-index: 600;
+    }
+
+    #tour-overlay.active { display: block; }
+
+    .tour-highlight {
+      position: absolute;
+      border: 2px solid var(--red);
+      border-radius: 4px;
+      box-shadow: 0 0 0 9999px rgba(8,8,8,0.85), 0 0 20px rgba(232,51,42,0.4);
+      z-index: 601;
+      pointer-events: none;
+    }
+
+    .tour-tooltip {
+      position: absolute;
+      z-index: 602;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      padding: 16px 20px;
+      max-width: 280px;
+    }
+
+    .tour-tooltip-text {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .tour-tooltip-step {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .tour-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .tour-btn {
+      padding: 8px 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .tour-btn.next {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .tour-btn.skip {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border2);
+    }
+
+    /* Suggested prompts in chat */
+    .prompt-card {
+      align-self: stretch;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    .prompt-card .prompt-headline {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--text);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .prompt-card .prompt-body {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text-mid);
+      margin-bottom: 16px;
+    }
+
+    .prompt-card .prompt-uses {
+      list-style: none;
+      margin-bottom: 20px;
+    }
+
+    .prompt-card .prompt-uses li {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text-mid);
+      padding: 4px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .prompt-card .prompt-uses li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .suggested-prompt {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .suggested-prompt:hover {
+      border-color: var(--red);
+    }
+
+    .interview-link {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 12px;
+      line-height: 1.5;
+    }
+
+    .interview-link a {
+      color: var(--red);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .interview-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* Team intro messages */
+    .team-intro {
+      align-self: flex-start;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .team-intro .intro-avatar {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    .team-intro .intro-avatar img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+    }
+
+    .team-intro .intro-content {
+      flex: 1;
+    }
+
+    .team-intro .intro-name {
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .team-intro .intro-text {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-mid);
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
@@ -888,6 +1100,19 @@
 <div class="glow-tr"></div>
 <div class="glow-bl"></div>
 <div class="toast-container" id="toast-container"></div>
+
+<!-- Tour overlay -->
+<div id="tour-overlay">
+  <div class="tour-highlight" id="tour-highlight"></div>
+  <div class="tour-tooltip" id="tour-tooltip">
+    <div class="tour-tooltip-step" id="tour-step-label"></div>
+    <div class="tour-tooltip-text" id="tour-text"></div>
+    <div class="tour-buttons">
+      <button class="tour-btn skip" id="tour-skip">Skip</button>
+      <button class="tour-btn next" id="tour-next">Next</button>
+    </div>
+  </div>
+</div>
 
 <!-- Rate limit overlay -->
 <div id="rate-limit-overlay">
@@ -976,17 +1201,6 @@
     <span class="choice-hint">You can switch anytime in the header.</span>
   </div>
 
-  <div id="interview-choice" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:40px;">
-    <h2 id="interview-heading" style="font-family:'Fraunces',serif; font-style:italic; font-size:24px; color:var(--text); text-align:center;">Would you like to go through the interview process so we can get to know you and your business?</h2>
-    <div class="choice-buttons">
-      <button class="choice-btn" id="interview-yes">
-        <span class="choice-label" id="interview-yes-label">Yes, let's do it</span>
-      </button>
-      <button class="choice-btn" id="interview-skip">
-        <span class="choice-label">No, skip for now</span>
-      </button>
-    </div>
-  </div>
 
   <div id="chat-area"></div>
 
@@ -1154,6 +1368,215 @@ document.getElementById('login-form').addEventListener('submit', async () => {
   loginBtn.textContent = 'Sign In';
 });
 
+// ---- TEAM INTROS (hardcoded, no API call) ----
+const TEAM_INTROS = {
+  STRATEGIST: "I'm Victor. I think about where your business is headed and how to get there faster. I'll ask the uncomfortable questions.",
+  ANALYST: "Mary here. I dig into the data and challenge assumptions. If something doesn't add up, I'll find it.",
+  PM: "I'm John. I keep things focused on what actually ships and what moves the needle. No fluff.",
+  ARCHITECT: "Winston. I think in systems. How things connect, where they break, and how to build them right.",
+  DEVELOPER: "Amelia. I'll tell you what's realistic to build, how long it'll take, and where to cut scope.",
+  PROBLEM_SOLVER: "I'm Emily. When something's stuck, I find the root cause. I get a little excited when I crack it.",
+  BRAINSTORM_COACH: "Carson here! I keep the ideas flowing and make sure we explore the wild ones too.",
+  STORYTELLER: "I'm Sophia. I help shape the narrative, the pitch, the message that makes people care.",
+};
+
+function showTeamIntros() {
+  const order = ['STRATEGIST', 'ANALYST', 'PM', 'ARCHITECT', 'DEVELOPER', 'PROBLEM_SOLVER', 'BRAINSTORM_COACH', 'STORYTELLER'];
+  for (const key of order) {
+    const div = document.createElement('div');
+    div.className = 'team-intro';
+    const avatar = document.createElement('div');
+    avatar.className = 'intro-avatar';
+    const img = document.createElement('img');
+    img.src = AGENT_AVATARS[key];
+    img.alt = AGENT_DISPLAY[key];
+    avatar.appendChild(img);
+    const content = document.createElement('div');
+    content.className = 'intro-content';
+    const name = document.createElement('div');
+    name.className = 'intro-name';
+    name.style.color = AGENT_COLORS[key];
+    name.textContent = AGENT_DISPLAY[key];
+    const text = document.createElement('div');
+    text.className = 'intro-text';
+    text.textContent = TEAM_INTROS[key];
+    content.appendChild(name);
+    content.appendChild(text);
+    div.appendChild(avatar);
+    div.appendChild(content);
+    chatArea.appendChild(div);
+  }
+  scrollToBottom();
+}
+
+function showSuggestedPrompts(showInterview) {
+  const card = document.createElement('div');
+  card.className = 'prompt-card';
+  card.id = 'prompt-card';
+
+  card.innerHTML = `
+    <div class="prompt-headline">This is your team.</div>
+    <div class="prompt-body">Eight advisors, each with a different lens on your business. They challenge each other, push back, and build on ideas together.</div>
+    <div class="prompt-body">We remember everything. Anything we talk about today is saved, so you can pick up where you left off next time. When we're done, download your session summary and drop it into your own Claude to keep rolling.</div>
+    <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use us:</div>
+    <ul class="prompt-uses">
+      <li>Think through your business strategy and positioning</li>
+      <li>Find where AI tools would give you the most leverage</li>
+      <li>Build custom apps that solve problems only you have</li>
+      <li>Get your systems talking to each other</li>
+      <li>Analyze data and spot patterns you're missing</li>
+    </ul>
+    <div class="prompt-body" style="font-weight:700; color:var(--text); margin-bottom:10px;">Try one of these to start:</div>
+  `;
+
+  const prompts = [
+    "Find the biggest automation opportunities in my business",
+    "Help me think through my business model",
+    "Where would custom-built tools give me the most leverage?",
+  ];
+
+  for (const p of prompts) {
+    const btn = document.createElement('button');
+    btn.className = 'suggested-prompt';
+    btn.textContent = p;
+    btn.addEventListener('click', () => {
+      const promptCard = document.getElementById('prompt-card');
+      if (promptCard) promptCard.remove();
+      addMessage('user', p);
+      conversationHistory.push({ role: 'user', content: p });
+      isWaiting = true;
+      sendBtn.disabled = true;
+      showThinking();
+      _streamResponse();
+    });
+    card.appendChild(btn);
+  }
+
+  if (showInterview) {
+    const interviewNote = document.createElement('div');
+    interviewNote.className = 'interview-link';
+    interviewNote.innerHTML = 'Want us to get to know you in depth first? We have a 30-40 minute interview where the team learns your business inside and out. You can always come back to it later. <a id="start-interview-link">Start the interview</a>';
+    card.appendChild(interviewNote);
+  }
+
+  chatArea.appendChild(card);
+  scrollToBottom();
+
+  if (showInterview) {
+    document.getElementById('start-interview-link').addEventListener('click', () => {
+      const promptCard = document.getElementById('prompt-card');
+      if (promptCard) promptCard.remove();
+      conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
+      addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
+      sendMessageDirect();
+    });
+  }
+}
+
+function showInterviewNudge() {
+  const card = document.createElement('div');
+  card.className = 'prompt-card';
+  card.id = 'prompt-card';
+
+  card.innerHTML = `
+    <div class="prompt-headline">Welcome back.</div>
+    <div class="prompt-body">Want to do the get-to-know-you session today? It takes about 30-40 minutes and helps us give you much better advice.</div>
+  `;
+
+  const yesBtn = document.createElement('button');
+  yesBtn.className = 'suggested-prompt';
+  yesBtn.textContent = "Yes, let's do it";
+  yesBtn.addEventListener('click', () => {
+    const promptCard = document.getElementById('prompt-card');
+    if (promptCard) promptCard.remove();
+    conversationHistory.push({ role: 'user', content: "Hey team, I'm back! Let's get to know each other." });
+    addMessage('user', "Hey team, let's get to know each other.");
+    sendMessageDirect();
+  });
+
+  const noBtn = document.createElement('button');
+  noBtn.className = 'suggested-prompt';
+  noBtn.textContent = "No, let's just dive in";
+  noBtn.addEventListener('click', () => {
+    const promptCard = document.getElementById('prompt-card');
+    if (promptCard) promptCard.remove();
+    // Record that we nudged today
+    localStorage.setItem('bmad_last_nudge_' + userLabel, new Date().toDateString());
+    addStatus("No problem. I'll ask again tomorrow. Let's dive in.");
+    showSuggestedPrompts(false);
+  });
+
+  card.appendChild(yesBtn);
+  card.appendChild(noBtn);
+  chatArea.appendChild(card);
+  scrollToBottom();
+}
+
+// ---- QUICK TOUR ----
+const TOUR_STEPS = [
+  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below' },
+  { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
+  { target: '#message-input', text: 'Type here, or use voice-to-text to talk to the team.', position: 'above' },
+];
+
+let tourStep = 0;
+
+function startTour(callback) {
+  tourStep = 0;
+  document.getElementById('tour-overlay').classList.add('active');
+  showTourStep();
+
+  document.getElementById('tour-next').onclick = () => {
+    tourStep++;
+    if (tourStep >= TOUR_STEPS.length) {
+      endTour();
+      callback();
+    } else {
+      showTourStep();
+    }
+  };
+
+  document.getElementById('tour-skip').onclick = () => {
+    endTour();
+    callback();
+  };
+}
+
+function showTourStep() {
+  const step = TOUR_STEPS[tourStep];
+  const targetEl = document.querySelector(step.target);
+  if (!targetEl) { tourStep++; return showTourStep(); }
+
+  const rect = targetEl.getBoundingClientRect();
+  const pad = 6;
+
+  const highlight = document.getElementById('tour-highlight');
+  highlight.style.top = (rect.top - pad) + 'px';
+  highlight.style.left = (rect.left - pad) + 'px';
+  highlight.style.width = (rect.width + pad * 2) + 'px';
+  highlight.style.height = (rect.height + pad * 2) + 'px';
+
+  const tooltip = document.getElementById('tour-tooltip');
+  document.getElementById('tour-step-label').textContent = `Step ${tourStep + 1} of ${TOUR_STEPS.length}`;
+  document.getElementById('tour-text').textContent = step.text;
+  document.getElementById('tour-next').textContent = tourStep === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+
+  if (step.position === 'below') {
+    tooltip.style.top = (rect.bottom + 16) + 'px';
+    tooltip.style.bottom = 'auto';
+    tooltip.style.left = Math.max(16, Math.min(rect.left, window.innerWidth - 296)) + 'px';
+  } else {
+    tooltip.style.bottom = (window.innerHeight - rect.top + 16) + 'px';
+    tooltip.style.top = 'auto';
+    tooltip.style.left = Math.max(16, Math.min(rect.left, window.innerWidth - 296)) + 'px';
+  }
+}
+
+function endTour() {
+  document.getElementById('tour-overlay').classList.remove('active');
+  localStorage.setItem('bmad_tour_done_' + userLabel, 'true');
+}
+
 // ---- START SESSION ----
 let isNewUser = false;
 
@@ -1162,65 +1585,47 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   sessionStartedAt = new Date();
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
-  addStatus('Session started');
 
   // Unlock iOS audio
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   ctx.resume().then(() => ctx.close());
 
-  // Check if user needs interview (non-admin only)
-  let interviewResuming = false;
-  if (userRole !== 'admin') {
-    try {
-      const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
-      if (ctxResp.ok) {
-        const ctxData = await ctxResp.json();
-        if (ctxData.is_new) {
-          // Brand new user, never interviewed
-          isNewUser = true;
-          document.getElementById('interview-heading').textContent = 'Would you like to go through the interview process so we can get to know you and your business?';
-          document.getElementById('interview-yes-label').textContent = "Yes, let's do it";
-          const overlay = document.getElementById('interview-choice');
-          overlay.style.display = 'flex';
-          return;
-        } else if (!ctxData.interview_complete) {
-          // Partial interview from a previous session
-          interviewResuming = true;
-          document.getElementById('interview-heading').textContent = "Hey! Last time we started getting to know you but didn't finish. Want to pick up where we left off?";
-          document.getElementById('interview-yes-label').textContent = "Yes, let's continue";
-          const overlay = document.getElementById('interview-choice');
-          overlay.style.display = 'flex';
-          return;
-        }
-      }
-    } catch (e) {}
+  // Admin users skip all onboarding
+  if (userRole === 'admin') {
+    addStatus('Session started');
+    messageInput.focus();
+    return;
   }
 
-  messageInput.focus();
-});
+  // Check user context
+  let userData = { is_new: true, interview_complete: false };
+  try {
+    const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
+    if (ctxResp.ok) userData = await ctxResp.json();
+  } catch (e) {}
 
-// Interview choice handlers
-let isResumeInterview = false;
+  const tourDone = localStorage.getItem('bmad_tour_done_' + userLabel);
+  const lastNudge = localStorage.getItem('bmad_last_nudge_' + userLabel);
+  const nudgedToday = lastNudge === new Date().toDateString();
 
-document.getElementById('interview-yes').addEventListener('click', () => {
-  document.getElementById('interview-choice').style.display = 'none';
-  messageInput.focus();
-
-  if (isNewUser) {
-    conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
-    addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
+  if (!tourDone) {
+    // First ever login: tour → intros → prompts with interview option
+    startTour(() => {
+      addStatus('Session started');
+      showTeamIntros();
+      showSuggestedPrompts(true);
+      messageInput.focus();
+    });
+  } else if (!userData.interview_complete && !nudgedToday) {
+    // Returning user, no interview yet, first login today: nudge
+    addStatus('Session started');
+    showInterviewNudge();
+    messageInput.focus();
   } else {
-    // Resuming partial interview
-    conversationHistory.push({ role: 'user', content: "Hey team, I'm back! Let's pick up where we left off on the interview." });
-    addMessage('user', "Hey team, I'm back! Let's pick up where we left off on the interview.");
+    // Returning user, interview done or already nudged today
+    addStatus('Session started');
+    messageInput.focus();
   }
-  sendMessageDirect();
-});
-
-document.getElementById('interview-skip').addEventListener('click', () => {
-  document.getElementById('interview-choice').style.display = 'none';
-  messageInput.focus();
-  // Just dismiss for this session. Don't write anything. They'll be asked again next time.
 });
 
 // ---- TIMER ----
