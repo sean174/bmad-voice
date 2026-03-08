@@ -11,7 +11,7 @@ function getVoiceId(agent) {
     BRAINSTORM_COACH: process.env.CARTESIA_VOICE_ID_BRAINSTORM_COACH,
     STORYTELLER: process.env.CARTESIA_VOICE_ID_STORYTELLER,
   };
-  return map[agent] || DEFAULT_VOICE;
+  return (map[agent] || DEFAULT_VOICE).trim();
 }
 
 function cleanTextForSpeech(text) {
