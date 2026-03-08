@@ -749,9 +749,15 @@ const AGENT_ROLES = {
   STORYTELLER: 'Storyteller',
 };
 
-const AGENT_INITIALS = {
-  ANALYST: 'MA', PM: 'JP', ARCHITECT: 'WA', DEVELOPER: 'AD',
-  STRATEGIST: 'VS', PROBLEM_SOLVER: 'DQ', BRAINSTORM_COACH: 'CB', STORYTELLER: 'SS',
+const AGENT_AVATARS = {
+  ANALYST: '/avatars/mary.png',
+  PM: '/avatars/john.png',
+  ARCHITECT: '/avatars/winston.png',
+  DEVELOPER: '/avatars/amelia.png',
+  STRATEGIST: '/avatars/victor.png',
+  PROBLEM_SOLVER: '/avatars/quinn.png',
+  BRAINSTORM_COACH: '/avatars/carson.png',
+  STORYTELLER: '/avatars/sophia.png',
 };
 
 // ---- STATE ----
@@ -999,8 +1005,16 @@ function displayAgentBlocks(blocks) {
 
     const avatar = document.createElement('div');
     avatar.className = 'agent-avatar';
-    avatar.style.backgroundColor = AGENT_COLORS[block.agent] || '#555';
-    avatar.textContent = AGENT_INITIALS[block.agent] || '?';
+    const avatarSrc = AGENT_AVATARS[block.agent];
+    if (avatarSrc) {
+      const img = document.createElement('img');
+      img.src = avatarSrc;
+      img.alt = AGENT_DISPLAY[block.agent] || '';
+      avatar.appendChild(img);
+    } else {
+      avatar.style.backgroundColor = AGENT_COLORS[block.agent] || '#555';
+      avatar.textContent = '?';
+    }
 
     const nameWrap = document.createElement('div');
     nameWrap.className = 'agent-name-wrap';
