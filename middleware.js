@@ -1,31 +1,24 @@
 export default function middleware(request) {
-  if (request.url.includes('manifest.json')) {
+  const url = new URL(request.url);
+
+  // Public routes - no auth needed
+  if (
+    url.pathname === '/' ||
+    url.pathname === '/index.html' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/api/login'
+  ) {
     return;
   }
 
-  const authHeader = request.headers.get('authorization');
+  // All other routes (API calls) require session token
+  const token = request.headers.get('x-session-token');
+  const validToken = process.env.SESSION_SECRET;
 
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    return new Response('Authentication required', {
+  if (!token || token !== validToken) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
-      headers: { 'WWW-Authenticate': 'Basic realm="BMAD Voice"' },
-    });
-  }
-
-  const base64 = authHeader.split(' ')[1];
-  const decoded = atob(base64);
-  const password = decoded.split(':').slice(1).join(':');
-
-  const validPasswords = (process.env.AUTH_PASSWORDS || '').split(',').map(p => p.trim()).filter(Boolean);
-
-  if (validPasswords.length === 0) {
-    return new Response('Server misconfigured: no passwords set', { status: 500 });
-  }
-
-  if (!validPasswords.includes(password)) {
-    return new Response('Invalid credentials', {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Basic realm="BMAD Voice"' },
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 }

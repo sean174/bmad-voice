@@ -6,57 +6,247 @@
   <title>BMAD Voice</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#1a1a2e">
+  <meta name="theme-color" content="#080808">
   <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fraunces:ital,opsz,wght@1,9..144,700;1,9..144,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --red: #e8332a;
+      --bg: #080808;
+      --bg2: #0f0f0f;
+      --bg3: #141414;
+      --border: #1e1e1e;
+      --border2: #2a2a2a;
+      --text: #f0f0f0;
+      --text-mid: #888;
+      --text-dim: #444;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #1a1a2e;
-      color: #e0e0e0;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
     }
 
-    #start-screen {
-      display: flex;
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Red glow corners */
+    .glow-tr {
+      position: fixed;
+      top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(232,51,42,0.06) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .glow-bl {
+      position: fixed;
+      bottom: -200px; left: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(232,51,42,0.06) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Shared styles */
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .headline {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.15;
+    }
+
+    .btn-primary {
+      padding: 16px 32px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: var(--red);
+      color: var(--text);
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:active { opacity: 0.8; }
+    .btn-primary:disabled {
+      background: var(--bg3);
+      color: var(--text-dim);
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .btn-secondary {
+      padding: 14px 24px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text-mid);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--text-mid);
+      color: var(--text);
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 16px 18px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-field:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 12px rgba(232,51,42,0.15);
+    }
+    .input-field::placeholder {
+      color: var(--text-dim);
+    }
+
+    .input-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .screen { display: none; position: relative; z-index: 1; }
+    .screen.active { display: flex; }
+
+    /* ---- SCREEN 1: LOGIN ---- */
+    #login-screen {
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100dvh;
-      gap: 24px;
+      padding: 40px 24px;
+      gap: 0;
     }
 
-    #start-screen h1 {
-      font-size: 28px;
-      color: #fff;
+    #login-screen .section-label {
+      margin-bottom: 24px;
     }
 
-    #start-screen p {
-      color: #888;
+    #login-screen .headline {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    #login-screen .subtext {
+      color: var(--text-mid);
       font-size: 14px;
+      margin-bottom: 40px;
+    }
+
+    #login-form {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    #login-form .input-field {
+      margin-bottom: 16px;
+    }
+
+    #login-form .btn-primary {
+      width: 100%;
+    }
+
+    #login-error {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-top: 12px;
       text-align: center;
-      max-width: 300px;
+      min-height: 16px;
     }
 
-    #start-btn {
-      padding: 16px 48px;
-      font-size: 18px;
-      background: #4A9EFF;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 600;
+    /* ---- SCREEN 2: START SESSION ---- */
+    #start-screen {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      padding: 40px 24px;
+      text-align: center;
     }
 
-    #start-btn:active { background: #3a8eef; }
+    #start-screen .section-label {
+      margin-bottom: 32px;
+    }
 
-    #app {
-      display: none;
+    #start-screen .headline {
+      font-size: 42px;
+      margin-bottom: 12px;
+    }
+
+    #start-screen .subtext {
+      color: var(--text-mid);
+      font-size: 14px;
+      margin-bottom: 40px;
+      line-height: 1.5;
+    }
+
+    #start-screen .btn-primary {
+      width: 100%;
+      max-width: 340px;
+    }
+
+    #start-screen .privacy-note {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 20px;
+    }
+
+    /* ---- SCREEN 3: CHAT ---- */
+    #chat-screen {
       flex-direction: column;
       height: 100dvh;
     }
@@ -65,208 +255,467 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 12px 16px;
-      border-bottom: 1px solid #2a2a4a;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
     }
 
-    #header h2 { font-size: 16px; color: #fff; }
+    #header-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text-mid);
+    }
 
-    #cost-widget {
-      font-size: 12px;
-      color: #888;
+    #session-cost {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    #session-timer {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
     }
 
     #chat-area {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
       -webkit-overflow-scrolling: touch;
     }
 
+    #chat-area::-webkit-scrollbar { width: 4px; }
+    #chat-area::-webkit-scrollbar-track { background: transparent; }
+    #chat-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* Messages */
     .message {
-      max-width: 90%;
-      padding: 10px 14px;
-      border-radius: 12px;
+      max-width: 88%;
+      padding: 16px;
+      border-radius: 2px;
       font-size: 15px;
-      line-height: 1.5;
+      line-height: 1.65;
       white-space: pre-wrap;
     }
 
     .message.user {
       align-self: flex-end;
-      background: #2a2a4a;
-      color: #fff;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
     }
 
     .message.agent {
       align-self: flex-start;
-      background: #16213e;
+      background: var(--bg2);
+      border: 1px solid var(--border);
     }
 
     .agent-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
+      gap: 12px;
+      margin-bottom: 10px;
     }
 
     .agent-avatar {
-      width: 28px;
-      height: 28px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
       font-weight: 700;
-      color: #fff;
+      color: var(--bg);
       flex-shrink: 0;
+      position: relative;
+    }
+
+    .agent-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .agent-name-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
     }
 
     .agent-name {
+      font-family: 'Space Mono', monospace;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .speaking-dot {
+      display: none;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: dot-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .agent-role {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      color: var(--text-dim);
     }
 
     .agent-text {
-      color: #d0d0d0;
+      color: var(--text-mid);
+      font-family: 'DM Sans', sans-serif;
+      padding-left: 48px;
     }
 
-    .speaking-indicator {
-      opacity: 1;
-      animation: pulse 1s ease-in-out infinite;
+    /* Speaking state */
+    .message.agent.speaking {
+      border-color: var(--red);
+      box-shadow: 0 0 24px rgba(232,51,42,0.12);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
+    .message.agent.speaking .agent-avatar {
+      box-shadow: 0 0 16px rgba(232,51,42,0.4);
+      animation: avatar-glow 1.5s ease-in-out infinite;
+    }
+
+    .message.agent.speaking .speaking-dot {
+      display: block;
+    }
+
+    @keyframes avatar-glow {
+      0%, 100% { box-shadow: 0 0 16px rgba(232,51,42,0.4); }
+      50% { box-shadow: 0 0 24px rgba(232,51,42,0.6); }
+    }
+
+    /* Thinking indicator */
+    .thinking-msg {
+      align-self: flex-start;
+      padding: 16px;
+      color: var(--text-dim);
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .thinking-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0% { content: ''; }
+      25% { content: '.'; }
+      50% { content: '..'; }
+      75% { content: '...'; }
+    }
+
+    /* Status messages */
+    .status-msg {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      color: var(--text-dim);
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 12px;
+    }
+
+    /* Wrap summary (inline) */
+    .wrap-summary {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 24px;
+      margin: 8px 0;
+      line-height: 1.7;
+      font-size: 14px;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text-mid);
+    }
+
+    .wrap-summary .wrap-kicker {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--red);
+      margin-bottom: 12px;
+    }
+
+    .wrap-summary .wrap-headline {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-weight: 800;
+      font-size: 28px;
+      color: var(--text);
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .wrap-summary .wrap-section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    .wrap-summary .wrap-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .wrap-summary .wrap-body {
+      white-space: pre-wrap;
+    }
+
+    .wrap-summary .wrap-cost {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-align: right;
+      margin-top: 20px;
+    }
+
+    /* Controls */
+    #controls-wrap {
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    #wrap-bar {
+      display: flex;
+      justify-content: center;
+      padding: 10px 20px 0;
+    }
+
+    #wrap-btn {
+      width: 100%;
     }
 
     #controls {
-      padding: 12px 16px;
-      border-top: 1px solid #2a2a4a;
+      padding: 12px 20px 16px;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
 
     #message-input {
       flex: 1;
-      padding: 12px 16px;
-      background: #16213e;
-      border: 1px solid #2a2a4a;
-      border-radius: 24px;
-      color: #fff;
-      font-size: 16px;
-      outline: none;
     }
 
-    #message-input::placeholder { color: #555; }
-
-    #send-btn, #wrap-btn {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 24px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    #send-btn {
-      background: #4A9EFF;
-      color: #fff;
-    }
-
-    #send-btn:disabled {
-      background: #333;
-      color: #666;
-      cursor: not-allowed;
-    }
-
-    #wrap-btn {
-      background: #51CF66;
-      color: #fff;
-    }
-
+    /* Stop button in controls */
     #stop-btn {
       display: none;
-      position: fixed;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 14px 36px;
-      background: #e03131;
-      color: #fff;
+      width: 100%;
+      padding: 16px;
+      background: var(--red);
+      color: var(--text);
       border: none;
-      border-radius: 24px;
-      font-size: 16px;
+      border-radius: 2px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
       font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
       cursor: pointer;
-      z-index: 100;
-      box-shadow: 0 4px 20px rgba(224, 49, 49, 0.4);
     }
 
+    /* Speaking label */
     #speaking-label {
       display: none;
-      position: fixed;
-      bottom: 130px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 13px;
-      color: #888;
-      z-index: 100;
-    }
-
-    .status-msg {
       text-align: center;
-      color: #666;
-      font-size: 13px;
-      padding: 8px;
+      padding: 8px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-mid);
     }
 
-    #wrap-summary {
-      background: #16213e;
-      border: 1px solid #2a2a4a;
-      border-radius: 12px;
-      padding: 16px;
-      margin: 12px 0;
-      white-space: pre-wrap;
+    /* Toast notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 12px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-mid);
+      max-width: 320px;
+      animation: toast-in 0.3s ease;
+      border-left: 3px solid var(--border2);
+    }
+
+    .toast.success { border-left-color: #51CF66; }
+    .toast.error { border-left-color: var(--red); }
+
+    .toast.fade-out {
+      animation: toast-out 0.3s ease forwards;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(20px); }
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Rate limit screen */
+    #rate-limit-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,8,0.95);
+      z-index: 500;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      text-align: center;
+    }
+
+    #rate-limit-overlay.active {
+      display: flex;
+    }
+
+    #rate-limit-overlay .headline {
+      font-size: 38px;
+      margin-bottom: 12px;
+    }
+
+    #rate-limit-overlay p {
+      color: var(--text-mid);
+      font-size: 14px;
+      max-width: 400px;
       line-height: 1.6;
     }
   </style>
 </head>
 <body>
 
-<div id="start-screen">
-  <h1>BMAD Voice</h1>
-  <p>Talk to your BMAD agent team. Brainstorm, plan, and capture action items.</p>
-  <button id="start-btn">Start Session</button>
+<div class="glow-tr"></div>
+<div class="glow-bl"></div>
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Rate limit overlay -->
+<div id="rate-limit-overlay">
+  <h1 class="headline">Slow down.</h1>
+  <p id="rate-limit-msg">You've hit the limit. Take a breather and try again shortly.</p>
 </div>
 
-<div id="app">
+<!-- SCREEN 1: LOGIN -->
+<div id="login-screen" class="screen active">
+  <span class="section-label">BMAD Voice</span>
+  <h1 class="headline">Welcome back.</h1>
+  <p class="subtext">Sign in to start a session.</p>
+  <form id="login-form" onsubmit="return false">
+    <label class="input-label" for="login-password">Password</label>
+    <input type="password" id="login-password" class="input-field" placeholder="Enter your password" autofocus>
+    <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+    <div id="login-error"></div>
+  </form>
+</div>
+
+<!-- SCREEN 2: START SESSION -->
+<div id="start-screen" class="screen">
+  <span class="section-label">BMAD Voice</span>
+  <h1 class="headline">Ready when<br>you are.</h1>
+  <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
+  <button id="start-btn" class="btn-primary">Start Session</button>
+  <span class="privacy-note">Private. End-to-end session.</span>
+</div>
+
+<!-- SCREEN 3: CHAT -->
+<div id="chat-screen" class="screen">
   <div id="header">
-    <h2>BMAD Voice</h2>
-    <div id="cost-widget">$0.00 this session</div>
+    <div id="header-title">BMAD Voice</div>
+    <div id="session-cost">$0.00</div>
+    <div id="session-timer">00:00</div>
+    <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
   </div>
 
   <div id="chat-area"></div>
 
-  <div id="speaking-label"></div>
-  <button id="stop-btn">STOP</button>
-
-  <div id="controls">
-    <input type="text" id="message-input" placeholder="Type or use WisprFlow..." maxlength="2000" autocomplete="off">
-    <button id="send-btn">Send</button>
-    <button id="wrap-btn">Wrap</button>
+  <div id="controls-wrap">
+    <div id="speaking-label"></div>
+    <div id="wrap-bar">
+      <button id="wrap-btn" class="btn-secondary">Wrap Up</button>
+    </div>
+    <div id="controls">
+      <input type="text" id="message-input" class="input-field" placeholder="Type or use WisprFlow..." maxlength="2000" autocomplete="off">
+      <button id="send-btn" class="btn-primary">Send</button>
+    </div>
+    <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
+      <button id="stop-btn">Stop Audio</button>
+    </div>
   </div>
 </div>
 
 <script>
-// Auth handled by Basic Auth middleware on all routes
-
+// ---- CONFIG ----
 const AGENT_COLORS = {
   ANALYST: '#4A9EFF',
   PM: '#FF6B6B',
@@ -279,27 +728,34 @@ const AGENT_COLORS = {
 };
 
 const AGENT_DISPLAY = {
-  ANALYST: 'Mary (Analyst)',
-  PM: 'John (PM)',
-  ARCHITECT: 'Winston (Architect)',
-  DEVELOPER: 'Amelia (Developer)',
-  STRATEGIST: 'Victor (Strategist)',
-  PROBLEM_SOLVER: 'Dr. Quinn (Problem Solver)',
-  BRAINSTORM_COACH: 'Carson (Brainstorm Coach)',
-  STORYTELLER: 'Sophia (Storyteller)',
+  ANALYST: 'Mary',
+  PM: 'John',
+  ARCHITECT: 'Winston',
+  DEVELOPER: 'Amelia',
+  STRATEGIST: 'Victor',
+  PROBLEM_SOLVER: 'Dr. Quinn',
+  BRAINSTORM_COACH: 'Carson',
+  STORYTELLER: 'Sophia',
+};
+
+const AGENT_ROLES = {
+  ANALYST: 'Analyst',
+  PM: 'Product Manager',
+  ARCHITECT: 'Architect',
+  DEVELOPER: 'Developer',
+  STRATEGIST: 'Strategist',
+  PROBLEM_SOLVER: 'Problem Solver',
+  BRAINSTORM_COACH: 'Brainstorm Coach',
+  STORYTELLER: 'Storyteller',
 };
 
 const AGENT_INITIALS = {
-  ANALYST: 'MA',
-  PM: 'JP',
-  ARCHITECT: 'WA',
-  DEVELOPER: 'AD',
-  STRATEGIST: 'VS',
-  PROBLEM_SOLVER: 'DQ',
-  BRAINSTORM_COACH: 'CB',
-  STORYTELLER: 'SS',
+  ANALYST: 'MA', PM: 'JP', ARCHITECT: 'WA', DEVELOPER: 'AD',
+  STRATEGIST: 'VS', PROBLEM_SOLVER: 'DQ', BRAINSTORM_COACH: 'CB', STORYTELLER: 'SS',
 };
 
+// ---- STATE ----
+let sessionToken = localStorage.getItem('bmad_token') || null;
 let conversationHistory = [];
 let sessionCost = 0;
 let sessionStartedAt = null;
@@ -311,27 +767,115 @@ let audioQueue = [];
 let currentAudio = null;
 let abortController = null;
 let isWaiting = false;
+let timerInterval = null;
+let userScrolledUp = false;
 
+// ---- ELEMENTS ----
+const loginScreen = document.getElementById('login-screen');
 const startScreen = document.getElementById('start-screen');
-const app = document.getElementById('app');
+const chatScreen = document.getElementById('chat-screen');
 const chatArea = document.getElementById('chat-area');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const wrapBtn = document.getElementById('wrap-btn');
 const stopBtn = document.getElementById('stop-btn');
-const costWidget = document.getElementById('cost-widget');
+const stopBar = document.getElementById('stop-bar');
+const sessionCostEl = document.getElementById('session-cost');
+const sessionTimerEl = document.getElementById('session-timer');
 const speakingLabel = document.getElementById('speaking-label');
+const controlsEl = document.getElementById('controls');
 
-// Start session
-document.getElementById('start-btn').addEventListener('click', () => {
-  startScreen.style.display = 'none';
-  app.style.display = 'flex';
-  sessionStartedAt = new Date().toISOString();
-  messageInput.focus();
-  addStatus('Session started. What would you like to discuss?');
+// ---- NAVIGATION ----
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Check if already logged in
+if (sessionToken) {
+  showScreen('start-screen');
+}
+
+// ---- LOGIN ----
+document.getElementById('login-form').addEventListener('submit', async () => {
+  const pw = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!pw) { errEl.textContent = 'Enter a password'; return; }
+
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn.disabled = true;
+  loginBtn.textContent = 'Signing in...';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      sessionToken = data.token;
+      localStorage.setItem('bmad_token', data.token);
+      showScreen('start-screen');
+    } else {
+      errEl.textContent = 'Wrong password';
+    }
+  } catch (e) {
+    errEl.textContent = 'Connection error';
+  }
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = 'Sign In';
 });
 
-// Send message
+// ---- START SESSION ----
+document.getElementById('start-btn').addEventListener('click', () => {
+  showScreen('chat-screen');
+  sessionStartedAt = new Date();
+  messageInput.focus();
+  startTimer();
+  addStatus('Session started');
+
+  // Unlock iOS audio
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume().then(() => ctx.close());
+});
+
+// ---- TIMER ----
+function startTimer() {
+  const start = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const secs = String(elapsed % 60).padStart(2, '0');
+    sessionTimerEl.textContent = `${mins}:${secs}`;
+  }, 1000);
+}
+
+// ---- SCROLL BEHAVIOR ----
+chatArea.addEventListener('scroll', () => {
+  const threshold = 100;
+  const atBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < threshold;
+  userScrolledUp = !atBottom;
+});
+
+function scrollToBottom() {
+  if (!userScrolledUp) {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+}
+
+// ---- API HELPER ----
+function apiFetch(url, options = {}) {
+  const headers = { ...options.headers, 'x-session-token': sessionToken };
+  return fetch(url, { ...options, headers });
+}
+
+// ---- SEND MESSAGE ----
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -339,17 +883,6 @@ messageInput.addEventListener('keydown', (e) => {
     sendMessage();
   }
 });
-
-// Stop audio
-stopBtn.addEventListener('click', stopAudio);
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && isPlaying) {
-    stopAudio();
-  }
-});
-
-// Wrap up
-wrapBtn.addEventListener('click', wrapUp);
 
 async function sendMessage() {
   const text = messageInput.value.trim();
@@ -361,24 +894,31 @@ async function sendMessage() {
 
   isWaiting = true;
   sendBtn.disabled = true;
-  addStatus('Agents are thinking...');
+  showThinking();
 
   try {
     abortController = new AbortController();
 
-    const response = await fetch('/api/chat', {
+    const response = await apiFetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: conversationHistory }),
       signal: abortController.signal,
     });
 
+    if (response.status === 429) {
+      const err = await response.json();
+      removeThinking();
+      showRateLimit(err.error);
+      isWaiting = false;
+      sendBtn.disabled = false;
+      return;
+    }
+
     if (!response.ok) {
       const err = await response.json();
-      removeLastStatus();
-      addStatus(err.error || 'Something went wrong.');
+      removeThinking();
+      showToast(err.error || 'Something went wrong', 'error');
       isWaiting = false;
       sendBtn.disabled = false;
       return;
@@ -388,7 +928,7 @@ async function sendMessage() {
     const decoder = new TextDecoder();
     let fullText = '';
 
-    removeLastStatus();
+    removeThinking();
 
     while (true) {
       const { done, value } = await reader.read();
@@ -401,16 +941,12 @@ async function sendMessage() {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-
-            if (data.type === 'text') {
-              fullText += data.content;
-            }
-
+            if (data.type === 'text') fullText += data.content;
             if (data.type === 'done' && data.usage) {
               totalInputTokens += data.usage.inputTokens;
               totalOutputTokens += data.usage.outputTokens;
               sessionCost += data.usage.estimatedCost;
-              updateCostWidget();
+              updateCost();
             }
           } catch (e) {}
         }
@@ -425,8 +961,8 @@ async function sendMessage() {
 
   } catch (err) {
     if (err.name !== 'AbortError') {
-      removeLastStatus();
-      addStatus('Connection error. Try again.');
+      removeThinking();
+      showToast('Connection error', 'error');
     }
   }
 
@@ -434,30 +970,29 @@ async function sendMessage() {
   sendBtn.disabled = false;
 }
 
+// ---- PARSE AGENTS ----
 function parseAgentBlocks(text) {
   const blocks = [];
   const regex = /\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*([\s\S]*?)(?=\n\n\[(?:ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:|$)/g;
 
   let match;
   while ((match = regex.exec(text)) !== null) {
-    blocks.push({
-      agent: match[1],
-      text: match[2].trim(),
-    });
+    blocks.push({ agent: match[1], text: match[2].trim() });
   }
 
   if (blocks.length === 0) {
     blocks.push({ agent: 'PM', text: text.trim() });
   }
-
   return blocks;
 }
 
+// ---- DISPLAY AGENTS ----
 function displayAgentBlocks(blocks) {
   for (const block of blocks) {
     const div = document.createElement('div');
     div.className = 'message agent';
     div.dataset.agent = block.agent;
+    div.dataset.msgId = Date.now() + Math.random();
 
     const header = document.createElement('div');
     header.className = 'agent-header';
@@ -467,49 +1002,61 @@ function displayAgentBlocks(blocks) {
     avatar.style.backgroundColor = AGENT_COLORS[block.agent] || '#555';
     avatar.textContent = AGENT_INITIALS[block.agent] || '?';
 
-    const name = document.createElement('div');
-    name.className = 'agent-name';
-    name.style.color = AGENT_COLORS[block.agent] || '#fff';
-    name.textContent = AGENT_DISPLAY[block.agent] || block.agent;
+    const nameWrap = document.createElement('div');
+    nameWrap.className = 'agent-name-wrap';
 
+    const nameRow = document.createElement('div');
+    nameRow.className = 'agent-name';
+    nameRow.style.color = AGENT_COLORS[block.agent] || '#fff';
+
+    const dot = document.createElement('span');
+    dot.className = 'speaking-dot';
+    nameRow.textContent = AGENT_DISPLAY[block.agent] || block.agent;
+    nameRow.prepend(dot);
+
+    const role = document.createElement('div');
+    role.className = 'agent-role';
+    role.textContent = AGENT_ROLES[block.agent] || '';
+
+    nameWrap.appendChild(nameRow);
+    nameWrap.appendChild(role);
     header.appendChild(avatar);
-    header.appendChild(name);
+    header.appendChild(nameWrap);
 
-    const text = document.createElement('div');
-    text.className = 'agent-text';
-    text.textContent = block.text;
+    const textEl = document.createElement('div');
+    textEl.className = 'agent-text';
+    textEl.textContent = block.text;
 
     div.appendChild(header);
-    div.appendChild(text);
+    div.appendChild(textEl);
     chatArea.appendChild(div);
   }
 
-  chatArea.scrollTop = chatArea.scrollHeight;
+  scrollToBottom();
 }
 
+// ---- AUDIO PLAYBACK ----
 async function playAgentAudio(blocks) {
   audioQueue = [...blocks];
   isPlaying = true;
-  stopBtn.style.display = 'block';
+  showStopButton(true);
 
   for (let i = 0; i < audioQueue.length; i++) {
     if (!isPlaying) break;
 
     const block = audioQueue[i];
-    speakingLabel.textContent = `${AGENT_DISPLAY[block.agent] || block.agent} is speaking...`;
+    speakingLabel.textContent = AGENT_DISPLAY[block.agent] || block.agent;
     speakingLabel.style.display = 'block';
 
-    // Highlight current speaker
+    // Mark speaking
     const msgs = chatArea.querySelectorAll(`[data-agent="${block.agent}"]`);
     const lastMsg = msgs[msgs.length - 1];
-    if (lastMsg) lastMsg.classList.add('speaking-indicator');
+    if (lastMsg) lastMsg.classList.add('speaking');
 
     try {
-      const response = await fetch('/api/speak', {
+      const response = await apiFetch('/api/speak', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: block.text, agent: block.agent }),
       });
 
@@ -523,16 +1070,9 @@ async function playAgentAudio(blocks) {
 
       await new Promise((resolve) => {
         if (!isPlaying) { resolve(); return; }
-
         currentAudio = new Audio(audioUrl);
-        currentAudio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-          resolve();
-        };
-        currentAudio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
-          resolve();
-        };
+        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.play().catch(resolve);
       });
 
@@ -540,41 +1080,55 @@ async function playAgentAudio(blocks) {
       if (err.name !== 'AbortError') console.error('Audio error:', err);
     }
 
-    if (lastMsg) lastMsg.classList.remove('speaking-indicator');
+    if (lastMsg) lastMsg.classList.remove('speaking');
   }
 
   isPlaying = false;
-  stopBtn.style.display = 'none';
+  showStopButton(false);
   speakingLabel.style.display = 'none';
   currentAudio = null;
 }
 
+// ---- STOP AUDIO ----
+stopBtn.addEventListener('click', stopAudio);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isPlaying) stopAudio();
+});
+
 function stopAudio() {
   isPlaying = false;
   audioQueue = [];
-
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
-
-  stopBtn.style.display = 'none';
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  showStopButton(false);
   speakingLabel.style.display = 'none';
-
-  const speaking = chatArea.querySelectorAll('.speaking-indicator');
-  speaking.forEach(el => el.classList.remove('speaking-indicator'));
+  chatArea.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
 }
+
+function showStopButton(show) {
+  if (show) {
+    controlsEl.style.display = 'none';
+    stopBar.style.display = 'block';
+    stopBtn.style.display = 'block';
+  } else {
+    controlsEl.style.display = 'flex';
+    stopBar.style.display = 'none';
+    stopBtn.style.display = 'none';
+  }
+}
+
+// ---- WRAP UP ----
+wrapBtn.addEventListener('click', wrapUp);
 
 async function wrapUp() {
   if (conversationHistory.length < 2) {
-    addStatus('Not enough conversation to wrap up.');
+    showToast('Not enough conversation to wrap up', 'error');
     return;
   }
 
   isWaiting = true;
   sendBtn.disabled = true;
   wrapBtn.disabled = true;
-  addStatus('Creating session summary...');
+  addStatus('Creating summary...');
 
   const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this BMAD session including:
 
@@ -589,23 +1143,18 @@ Format the action items as a JSON array at the very end, on its own line, wrappe
 Session cost: $${sessionCost.toFixed(4)}
 Include the session cost in the summary.`;
 
-  const wrapMessages = [
-    ...conversationHistory,
-    { role: 'user', content: wrapPrompt },
-  ];
+  const wrapMessages = [...conversationHistory, { role: 'user', content: wrapPrompt }];
 
   try {
-    const response = await fetch('/api/chat', {
+    const response = await apiFetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: wrapMessages }),
     });
 
     if (!response.ok) {
       removeLastStatus();
-      addStatus('Wrap up failed. Try again.');
+      showToast('Wrap up failed', 'error');
       isWaiting = false;
       sendBtn.disabled = false;
       wrapBtn.disabled = false;
@@ -619,11 +1168,8 @@ Include the session cost in the summary.`;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
+      for (const line of chunk.split('\n')) {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
@@ -632,7 +1178,7 @@ Include the session cost in the summary.`;
               totalInputTokens += data.usage.inputTokens;
               totalOutputTokens += data.usage.outputTokens;
               sessionCost += data.usage.estimatedCost;
-              updateCostWidget();
+              updateCost();
             }
           } catch (e) {}
         }
@@ -641,16 +1187,39 @@ Include the session cost in the summary.`;
 
     removeLastStatus();
 
-    // Display summary
-    const summaryDiv = document.createElement('div');
-    summaryDiv.id = 'wrap-summary';
-
-    // Extract tasks before display
     const tasksMatch = summaryText.match(/<tasks>([\s\S]*?)<\/tasks>/);
     const displayText = summaryText.replace(/<tasks>[\s\S]*?<\/tasks>/, '').trim();
-    summaryDiv.textContent = displayText;
-    chatArea.appendChild(summaryDiv);
-    chatArea.scrollTop = chatArea.scrollHeight;
+
+    // Build styled summary
+    const wrap = document.createElement('div');
+    wrap.className = 'wrap-summary';
+
+    const kicker = document.createElement('div');
+    kicker.className = 'wrap-kicker';
+    kicker.textContent = 'Session Complete';
+
+    const headline = document.createElement('div');
+    headline.className = 'wrap-headline';
+    headline.textContent = "Here's what we built.";
+
+    const divider = document.createElement('div');
+    divider.className = 'wrap-divider';
+
+    const body = document.createElement('div');
+    body.className = 'wrap-body';
+    body.textContent = displayText;
+
+    const cost = document.createElement('div');
+    cost.className = 'wrap-cost';
+    cost.textContent = `Session cost: $${sessionCost.toFixed(4)}`;
+
+    wrap.appendChild(kicker);
+    wrap.appendChild(headline);
+    wrap.appendChild(divider);
+    wrap.appendChild(body);
+    wrap.appendChild(cost);
+    chatArea.appendChild(wrap);
+    scrollToBottom();
 
     // Read executive summary aloud
     const execMatch = displayText.match(/Executive Summary[\s\S]*?(?=\n\n|Key Insights|$)/i);
@@ -663,40 +1232,31 @@ Include the session cost in the summary.`;
       try {
         const tasks = JSON.parse(tasksMatch[1]);
         if (tasks.length > 0) {
-          addStatus(`Pushing ${tasks.length} task(s) to Asana...`);
-
-          const taskResponse = await fetch('/api/tasks', {
+          const taskResponse = await apiFetch('/api/tasks', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tasks }),
           });
 
           if (taskResponse.ok) {
             const result = await taskResponse.json();
             const succeeded = result.results.filter(r => r.success).length;
-            removeLastStatus();
-            addStatus(`${succeeded} of ${tasks.length} task(s) created in Asana.`);
+            showToast(`${succeeded} task(s) created in Asana`, 'success');
           } else {
-            removeLastStatus();
-            addStatus('Failed to create Asana tasks.');
+            showToast('Failed to create Asana tasks', 'error');
           }
         }
       } catch (e) {
-        console.error('Task parse error:', e);
-        addStatus('Could not parse action items for Asana.');
+        showToast('Could not parse action items', 'error');
       }
     }
 
-    // Save session to database
-    await fetch('/api/usage', {
+    // Save session
+    await apiFetch('/api/usage', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        started_at: sessionStartedAt,
+        started_at: sessionStartedAt.toISOString(),
         ended_at: new Date().toISOString(),
         total_input_tokens: totalInputTokens,
         total_output_tokens: totalOutputTokens,
@@ -707,11 +1267,11 @@ Include the session cost in the summary.`;
       }),
     }).catch(console.error);
 
-    addStatus('Session wrapped up and saved.');
+    showToast('Session saved', 'success');
 
   } catch (err) {
     removeLastStatus();
-    addStatus('Wrap up error: ' + err.message);
+    showToast('Wrap up error', 'error');
   }
 
   isWaiting = false;
@@ -719,12 +1279,27 @@ Include the session cost in the summary.`;
   wrapBtn.disabled = false;
 }
 
+// ---- UI HELPERS ----
 function addMessage(role, text) {
   const div = document.createElement('div');
   div.className = `message ${role}`;
   div.textContent = text;
   chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
+  scrollToBottom();
+}
+
+function showThinking() {
+  const div = document.createElement('div');
+  div.className = 'thinking-msg';
+  div.id = 'thinking';
+  div.innerHTML = 'Agents are thinking<span class="thinking-dots"></span>';
+  chatArea.appendChild(div);
+  scrollToBottom();
+}
+
+function removeThinking() {
+  const el = document.getElementById('thinking');
+  if (el) el.remove();
 }
 
 function addStatus(text) {
@@ -732,19 +1307,58 @@ function addStatus(text) {
   div.className = 'status-msg';
   div.textContent = text;
   chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
+  scrollToBottom();
 }
 
 function removeLastStatus() {
   const statuses = chatArea.querySelectorAll('.status-msg');
-  if (statuses.length > 0) {
-    statuses[statuses.length - 1].remove();
-  }
+  if (statuses.length > 0) statuses[statuses.length - 1].remove();
 }
 
-function updateCostWidget() {
-  costWidget.textContent = `$${sessionCost.toFixed(4)} this session`;
+function updateCost() {
+  sessionCostEl.textContent = `$${sessionCost.toFixed(4)}`;
 }
+
+// ---- TOAST SYSTEM ----
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// ---- RATE LIMIT ----
+function showRateLimit(msg) {
+  document.getElementById('rate-limit-msg').textContent = msg || 'You\'ve hit the limit. Try again shortly.';
+  document.getElementById('rate-limit-overlay').classList.add('active');
+  setTimeout(() => {
+    document.getElementById('rate-limit-overlay').classList.remove('active');
+  }, 10000);
+}
+
+// ---- END SESSION / LOGOUT ----
+document.getElementById('end-session-btn').addEventListener('click', () => {
+  stopAudio();
+  if (timerInterval) clearInterval(timerInterval);
+  sessionToken = null;
+  localStorage.removeItem('bmad_token');
+  conversationHistory = [];
+  sessionCost = 0;
+  totalInputTokens = 0;
+  totalOutputTokens = 0;
+  totalCartesiaChars = 0;
+  chatArea.innerHTML = '';
+  sessionCostEl.textContent = '$0.00';
+  sessionTimerEl.textContent = '00:00';
+  showScreen('login-screen');
+  document.getElementById('login-password').value = '';
+});
 </script>
 </body>
 </html>
