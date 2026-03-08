@@ -840,6 +840,18 @@
     <span class="choice-hint">You can switch anytime in the header.</span>
   </div>
 
+  <div id="interview-choice" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:50; display:none; flex-direction:column; align-items:center; justify-content:center; gap:24px; padding:40px;">
+    <h2 style="font-family:'Fraunces',serif; font-style:italic; font-size:24px; color:var(--text); text-align:center;">Would you like to go through the interview process so we can get to know you and your business?</h2>
+    <div class="choice-buttons">
+      <button class="choice-btn" id="interview-yes">
+        <span class="choice-label">Yes, let's do it</span>
+      </button>
+      <button class="choice-btn" id="interview-skip">
+        <span class="choice-label">No, skip for now</span>
+      </button>
+    </div>
+  </div>
+
   <div id="chat-area"></div>
 
   <div id="controls-wrap">
@@ -1002,10 +1014,11 @@ document.getElementById('login-form').addEventListener('submit', async () => {
 });
 
 // ---- START SESSION ----
-document.getElementById('start-btn').addEventListener('click', () => {
+let isNewUser = false;
+
+document.getElementById('start-btn').addEventListener('click', async () => {
   showScreen('chat-screen');
   sessionStartedAt = new Date();
-  messageInput.focus();
   startTimer();
   addStatus('Session started');
 
@@ -1017,6 +1030,46 @@ document.getElementById('start-btn').addEventListener('click', () => {
   // Unlock iOS audio
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   ctx.resume().then(() => ctx.close());
+
+  // Check if new user
+  try {
+    const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
+    if (ctxResp.ok) {
+      const ctxData = await ctxResp.json();
+      if (ctxData.is_new) {
+        isNewUser = true;
+        const overlay = document.getElementById('interview-choice');
+        overlay.style.display = 'flex';
+        return;
+      }
+    }
+  } catch (e) {}
+
+  messageInput.focus();
+});
+
+// Interview choice handlers
+document.getElementById('interview-yes').addEventListener('click', () => {
+  document.getElementById('interview-choice').style.display = 'none';
+  messageInput.focus();
+  // Auto-send a greeting to trigger interview mode
+  conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
+  addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
+  sendMessageDirect();
+});
+
+document.getElementById('interview-skip').addEventListener('click', async () => {
+  document.getElementById('interview-choice').style.display = 'none';
+  messageInput.focus();
+  isNewUser = false;
+  // Create empty context so they won't be prompted again
+  try {
+    await apiFetch('/api/user-context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_label: userLabel, context_text: '' }),
+    });
+  } catch (e) {}
 });
 
 // ---- TIMER ----
@@ -1058,6 +1111,14 @@ messageInput.addEventListener('keydown', (e) => {
   }
 });
 
+async function sendMessageDirect() {
+  if (isWaiting) return;
+  isWaiting = true;
+  sendBtn.disabled = true;
+  showThinking();
+  await _streamResponse();
+}
+
 async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || isWaiting) return;
@@ -1069,6 +1130,10 @@ async function sendMessage() {
   isWaiting = true;
   sendBtn.disabled = true;
   showThinking();
+  await _streamResponse();
+}
+
+async function _streamResponse() {
 
   try {
     abortController = new AbortController();
