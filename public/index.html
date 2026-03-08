@@ -1235,7 +1235,12 @@
   <div id="download-screen">
     <h2>Your session is ready.</h2>
     <div id="download-status">Preparing summary...</div>
-    <button id="download-btn" class="btn-primary" style="display:none;">Download Session</button>
+    <div id="download-buttons" style="display:none; width:100%; max-width:320px;">
+      <button id="download-pdf-btn" class="btn-primary" style="width:100%; margin-bottom:8px;">Download PDF</button>
+      <p style="font-size:12px; color:var(--text-dim); margin:0 0 16px; font-family:'DM Sans',sans-serif;">If you don't have Claude yet</p>
+      <button id="download-md-btn" class="btn-primary" style="width:100%; background:var(--bg3); border:1px solid var(--border2);">Download for Claude</button>
+      <p style="font-size:12px; color:var(--text-dim); margin:4px 0 0; font-family:'DM Sans',sans-serif;">Drop this file right into Claude to keep going</p>
+    </div>
     <div class="countdown" id="logout-countdown" style="display:none;"></div>
     <button id="logout-now-btn" class="btn-secondary" style="display:none;">Log Out Now</button>
   </div>
@@ -2507,12 +2512,11 @@ document.getElementById('end-download').addEventListener('click', async () => {
   dlScreen.classList.add('active');
 
   const statusEl = document.getElementById('download-status');
-  const dlBtn = document.getElementById('download-btn');
   const countdownEl = document.getElementById('logout-countdown');
   const logoutNowBtn = document.getElementById('logout-now-btn');
 
   statusEl.textContent = 'Preparing summary...';
-  dlBtn.style.display = 'none';
+  document.getElementById('download-buttons').style.display = 'none';
   countdownEl.style.display = 'none';
   logoutNowBtn.style.display = 'none';
 
@@ -2622,13 +2626,14 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
     console.error('Memory extraction error:', e);
   }
 
-  // Show download button
-  dlBtn.style.display = 'block';
+  // Show download buttons
+  const dlButtons = document.getElementById('download-buttons');
+  dlButtons.style.display = 'block';
 
   const savedUserLabel = userLabel;
   const savedConversation = [...conversationHistory];
 
-  dlBtn.addEventListener('click', () => {
+  function buildSessionContent() {
     const lines = [
       `# Mastermind Session\n`,
       `**Date:** ${new Date().toLocaleDateString()}\n`,
@@ -2645,20 +2650,14 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
         lines.push(`### Team\n${msg.content}\n`);
       }
     }
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `mastermind-${new Date().toISOString().slice(0,10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return lines.join('\n');
+  }
 
-    // Start 60-second countdown
-    dlBtn.style.display = 'none';
+  function startLogoutCountdown() {
+    dlButtons.style.display = 'none';
     statusEl.textContent = 'Downloaded.';
     countdownEl.style.display = 'block';
     logoutNowBtn.style.display = 'block';
-
     let remaining = 60;
     countdownEl.textContent = `Logging out in ${remaining}s`;
     const countdownTimer = setInterval(() => {
@@ -2669,12 +2668,44 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
         doLogout();
       }
     }, 1000);
-
     logoutNowBtn.addEventListener('click', () => {
       clearInterval(countdownTimer);
       doLogout();
     });
-  }, { once: true });
+  }
+
+  // Markdown download
+  document.getElementById('download-md-btn').addEventListener('click', () => {
+    const content = buildSessionContent();
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mastermind-${new Date().toISOString().slice(0,10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    startLogoutCountdown();
+  });
+
+  // PDF download
+  document.getElementById('download-pdf-btn').addEventListener('click', () => {
+    const content = buildSessionContent();
+    // Convert markdown to simple styled HTML for PDF
+    const htmlContent = content
+      .replace(/^# (.+)$/gm, '<h1 style="font-size:22px;margin:0 0 8px;">$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2 style="font-size:18px;margin:20px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px;">$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;margin:14px 0 4px;color:#555;">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #ddd;margin:16px 0;">')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>Mastermind Session</title><style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#222;font-size:14px;line-height:1.6;}@media print{body{margin:20px;}}</style></head><body>${htmlContent}</body></html>`);
+    printWindow.document.close();
+    printWindow.print();
+    startLogoutCountdown();
+  });
+
 });
 </script>
 </body>
