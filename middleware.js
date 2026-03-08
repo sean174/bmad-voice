@@ -1,7 +1,11 @@
-// HTTP Basic Auth middleware for Vercel
-// Supports multiple passwords via comma-separated AUTH_PASSWORDS env var
+import { next } from '@vercel/edge';
 
 export default function middleware(request) {
+  // Skip auth for manifest.json (PWA needs it)
+  if (request.url.includes('manifest.json')) {
+    return next();
+  }
+
   const authHeader = request.headers.get('authorization');
 
   if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -31,6 +35,8 @@ export default function middleware(request) {
       },
     });
   }
+
+  return next();
 }
 
 export const config = {
