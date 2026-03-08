@@ -1884,18 +1884,12 @@ async function _streamResponse() {
     await new Promise(r => setTimeout(r, 400));
     removeThinking();
 
-    showToast(`mode:${hasChosenMode} voice:${voiceEnabled} blocks:${agentBlocks.length}`, 'info');
     if (!hasChosenMode) {
       pendingAgentBlocks = agentBlocks;
       document.getElementById('voice-choice').classList.add('active');
     } else {
       displayAgentBlocks(agentBlocks);
-      if (voiceEnabled) {
-        showToast('Playing audio...', 'info');
-        playAgentAudio(agentBlocks);
-      } else {
-        showToast('Voice OFF, skipping audio', 'error');
-      }
+      if (voiceEnabled) playAgentAudio(agentBlocks);
     }
 
   } catch (err) {
@@ -1994,7 +1988,6 @@ async function prefetchAudio(block) {
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
       console.error('Speak API error for', block.agent, ':', response.status, errText);
-      showToast('Voice error: ' + response.status + ' for ' + (block.agent || 'agent'), 'error');
       return null;
     }
 
@@ -2009,7 +2002,6 @@ async function prefetchAudio(block) {
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Audio prefetch error:', err);
-      showToast('Voice failed for ' + (block.agent || 'agent'), 'error');
     }
     return null;
   }
@@ -2071,8 +2063,7 @@ async function playAgentAudio(blocks) {
         currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.src = audioUrl;
-        currentAudio.play().catch(e => {
-          showToast('Play blocked: ' + e.message, 'error');
+        currentAudio.play().catch(() => {
           URL.revokeObjectURL(audioUrl);
           resolve();
         });
