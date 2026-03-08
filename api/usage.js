@@ -26,18 +26,20 @@ async function handleSaveSession(req, res) {
     estimated_cost_usd,
     summary_text,
     messages_json,
+    user_label,
   } = req.body;
 
   try {
     await pool.query(
       `INSERT INTO sessions
         (started_at, ended_at, total_input_tokens, total_output_tokens,
-         total_cartesia_characters, estimated_cost_usd, summary_text, messages_json)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         total_cartesia_characters, estimated_cost_usd, summary_text, messages_json, user_label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         started_at, ended_at, total_input_tokens || 0, total_output_tokens || 0,
         total_cartesia_characters || 0, estimated_cost_usd || 0,
         summary_text || '', messages_json ? JSON.stringify(messages_json) : '[]',
+        user_label || 'unknown',
       ]
     );
 

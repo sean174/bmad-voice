@@ -902,6 +902,8 @@ const AGENT_AVATARS = {
 
 // ---- STATE ----
 let sessionToken = localStorage.getItem('bmad_token') || null;
+let userRole = localStorage.getItem('bmad_role') || 'guest';
+let userLabel = localStorage.getItem('bmad_label') || 'unknown';
 let conversationHistory = [];
 let sessionCost = 0;
 let sessionStartedAt = null;
@@ -968,7 +970,11 @@ document.getElementById('login-form').addEventListener('submit', async () => {
 
     if (res.ok && data.token) {
       sessionToken = data.token;
+      userRole = data.role || 'guest';
+      userLabel = data.label || 'unknown';
       localStorage.setItem('bmad_token', data.token);
+      localStorage.setItem('bmad_role', userRole);
+      localStorage.setItem('bmad_label', userLabel);
       showScreen('start-screen');
     } else {
       errEl.textContent = 'Wrong password';
@@ -1051,7 +1057,7 @@ async function sendMessage() {
     const response = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conversationHistory }),
+      body: JSON.stringify({ messages: conversationHistory, user_label: userLabel }),
       signal: abortController.signal,
     });
 
@@ -1352,7 +1358,7 @@ Include the session cost in the summary.`;
     const response = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: wrapMessages }),
+      body: JSON.stringify({ messages: wrapMessages, user_label: userLabel }),
     });
 
     if (!response.ok) {
@@ -1430,8 +1436,8 @@ Include the session cost in the summary.`;
       await playAgentAudio([{ agent: 'ANALYST', text: execMatch[0] }]);
     }
 
-    // Push tasks to Asana
-    if (tasksMatch) {
+    // Push tasks to Asana (admin only)
+    if (tasksMatch && userRole === 'admin') {
       try {
         const tasks = JSON.parse(tasksMatch[1]);
         if (tasks.length > 0) {
@@ -1467,6 +1473,7 @@ Include the session cost in the summary.`;
         estimated_cost_usd: sessionCost,
         summary_text: displayText,
         messages_json: conversationHistory,
+        user_label: userLabel,
       }),
     }).catch(console.error);
 
@@ -1652,7 +1659,11 @@ document.getElementById('end-session-btn').addEventListener('click', () => {
   stopAudio();
   if (timerInterval) clearInterval(timerInterval);
   sessionToken = null;
+  userRole = 'guest';
+  userLabel = 'unknown';
   localStorage.removeItem('bmad_token');
+  localStorage.removeItem('bmad_role');
+  localStorage.removeItem('bmad_label');
   conversationHistory = [];
   sessionCost = 0;
   totalInputTokens = 0;

@@ -129,7 +129,7 @@ async function checkRateLimits() {
   }
 }
 
-async function logMessage(inputTokens, outputTokens, estimatedCost) {
+async function logMessage(inputTokens, outputTokens, estimatedCost, userLabel) {
   if (!process.env.POSTGRES_URL) return;
 
   const { Pool } = require('@neondatabase/serverless');
@@ -137,8 +137,8 @@ async function logMessage(inputTokens, outputTokens, estimatedCost) {
 
   try {
     await pool.query(
-      'INSERT INTO messages (input_tokens, output_tokens, estimated_cost_usd) VALUES ($1, $2, $3)',
-      [inputTokens, outputTokens, estimatedCost]
+      'INSERT INTO messages (input_tokens, output_tokens, estimated_cost_usd, user_label) VALUES ($1, $2, $3, $4)',
+      [inputTokens, outputTokens, estimatedCost, userLabel || 'unknown']
     );
   } finally {
     await pool.end();
@@ -173,7 +173,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: rateLimitCheck.reason });
   }
 
-  const { messages } = req.body;
+  const { messages, user_label } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Messages array required' });
   }
@@ -263,7 +263,7 @@ export default async function handler(req, res) {
     res.end();
 
     // Log asynchronously
-    logMessage(inputTokens, outputTokens, estimatedCost).catch(console.error);
+    logMessage(inputTokens, outputTokens, estimatedCost, user_label).catch(console.error);
 
   } catch (err) {
     console.error('Chat error:', err);
