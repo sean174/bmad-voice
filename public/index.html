@@ -1669,9 +1669,19 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
 
-  // Unlock iOS audio
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  ctx.resume().then(() => ctx.close());
+  // Unlock iOS audio - play a silent sound to enable future programmatic playback
+  try {
+    window._audioCtx = window._audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    window._audioCtx.resume();
+    const silentBuffer = window._audioCtx.createBuffer(1, 1, 22050);
+    const source = window._audioCtx.createBufferSource();
+    source.buffer = silentBuffer;
+    source.connect(window._audioCtx.destination);
+    source.start(0);
+    // Also unlock HTML5 Audio
+    const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0P////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABsOjRaxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAANTA0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAAHNKgAAAAACYGhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//M4wAAAAesAAAAAAAANDQ0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAA=');
+    silentAudio.play().catch(() => {});
+  } catch(e) {}
 
   // Admin users skip all onboarding
   if (userRole === 'admin') {
@@ -1762,6 +1772,7 @@ async function sendMessageDirect() {
 async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || isWaiting) return;
+  if (voiceEnabled) unlockAudio();
 
   messageInput.value = '';
   addMessage('user', text);
@@ -2056,7 +2067,11 @@ async function playAgentAudio(blocks) {
         currentAudio = new Audio(audioUrl);
         currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
         currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
-        currentAudio.play().catch(resolve);
+        currentAudio.play().catch(e => {
+          showToast('Play blocked: ' + e.message, 'error');
+          URL.revokeObjectURL(audioUrl);
+          resolve();
+        });
       });
     }
 
@@ -2253,7 +2268,16 @@ voiceOnBtn.addEventListener('click', () => {
 });
 
 // ---- VOICE CHOICE (first message) ----
+function unlockAudio() {
+  try {
+    if (window._audioCtx) window._audioCtx.resume();
+    const s = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0P////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABsOjRaxQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAANTA0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAAHNKgAAAAACYGhwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//M4wAAAAesAAAAAAAANDQ0NDQ0AAAAAAAAAAAAAAAAAAAAAP/jOMAAAc1JJBmAAAIAYAg0Y4AAAAA=');
+    s.play().catch(() => {});
+  } catch(e) {}
+}
+
 function handleVoiceChoice(listen) {
+  if (listen) unlockAudio();
   hasChosenMode = true;
   voiceEnabled = listen;
   updateVoiceToggle();
