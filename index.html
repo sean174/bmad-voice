@@ -1165,7 +1165,10 @@ async function playAgentAudio(blocks) {
         body: JSON.stringify({ text: block.text, agent: block.agent }),
       });
 
-      if (!response.ok) continue;
+      if (!response.ok) {
+        console.error('Speak API error for', block.agent, ':', response.status, await response.text().catch(() => ''));
+        continue;
+      }
 
       const charCount = parseInt(response.headers.get('X-Cartesia-Characters') || '0');
       totalCartesiaChars += charCount;

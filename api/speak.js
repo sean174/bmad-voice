@@ -1,16 +1,18 @@
-const VOICE_MAP = {
-  ANALYST: process.env.CARTESIA_VOICE_ID_ANALYST,
-  PM: process.env.CARTESIA_VOICE_ID_PM,
-  ARCHITECT: process.env.CARTESIA_VOICE_ID_ARCHITECT,
-  DEVELOPER: process.env.CARTESIA_VOICE_ID_DEVELOPER,
-  STRATEGIST: process.env.CARTESIA_VOICE_ID_STRATEGIST,
-  PROBLEM_SOLVER: process.env.CARTESIA_VOICE_ID_PROBLEM_SOLVER,
-  BRAINSTORM_COACH: process.env.CARTESIA_VOICE_ID_BRAINSTORM_COACH,
-  STORYTELLER: process.env.CARTESIA_VOICE_ID_STORYTELLER,
-};
-
-// Default voice if agent-specific one isn't set
 const DEFAULT_VOICE = 'a0e99841-438c-4a64-b679-ae501e7d6091';
+
+function getVoiceId(agent) {
+  const map = {
+    ANALYST: process.env.CARTESIA_VOICE_ID_ANALYST,
+    PM: process.env.CARTESIA_VOICE_ID_PM,
+    ARCHITECT: process.env.CARTESIA_VOICE_ID_ARCHITECT,
+    DEVELOPER: process.env.CARTESIA_VOICE_ID_DEVELOPER,
+    STRATEGIST: process.env.CARTESIA_VOICE_ID_STRATEGIST,
+    PROBLEM_SOLVER: process.env.CARTESIA_VOICE_ID_PROBLEM_SOLVER,
+    BRAINSTORM_COACH: process.env.CARTESIA_VOICE_ID_BRAINSTORM_COACH,
+    STORYTELLER: process.env.CARTESIA_VOICE_ID_STORYTELLER,
+  };
+  return map[agent] || DEFAULT_VOICE;
+}
 
 function cleanTextForSpeech(text) {
   return text
@@ -42,7 +44,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No speakable text after cleaning' });
   }
 
-  const voiceId = VOICE_MAP[agent] || DEFAULT_VOICE;
+  const voiceId = getVoiceId(agent);
+  console.log('Speaking for agent:', agent, 'voiceId:', voiceId);
 
   try {
     const response = await fetch('https://api.cartesia.ai/tts/bytes', {
@@ -57,7 +60,7 @@ export default async function handler(req, res) {
         transcript: cleanText,
         voice: { mode: 'id', id: voiceId },
         language: 'en',
-        speed: 'fastest',
+        speed: 'fast',
         output_format: {
           container: 'mp3',
           bit_rate: 128000,
