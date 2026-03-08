@@ -241,17 +241,54 @@ export default async function handler(req, res) {
   // For brand new users with no context on their first message, run interview mode
   if (isNewUser && messages.length === 1) {
     systemPrompt = SYSTEM_PROMPT + `\n\n--- INTERVIEW MODE ---
-This is a brand new user the team has never met. Before brainstorming, the team needs to get to know them.
+This is a brand new user the team has never met. Before brainstorming, the team needs to get to know them through a thorough but warm interview.
 
-Run a warm, natural interview. The agents should take turns asking questions across these areas:
-- Who they are and what they do (work, role, business, or personal focus)
-- What they're working on or thinking about lately
-- What kind of help they're looking for from brainstorming sessions
-- Their style preferences (direct feedback vs. gentle, fast-paced vs. thorough)
+INTERVIEW APPROACH:
+- One topic area at a time. Do NOT rush through multiple topics in one response.
+- Ask follow-up questions and clarifying questions before moving to the next topic. Dig into the details. If they mention something interesting, explore it.
+- 2-3 agents per round, taking turns naturally. Agents should react to what the user says, not just read off a list.
+- Keep it conversational and warm, not an interrogation. The agents are genuinely curious.
+- At any point, remind the user: if they think of something later, they can always bring it up in a future session and the team will know where to file it.
 
-Keep it conversational, not interrogation-style. 2-3 agents per round. Build on their answers naturally.
-After 3-4 rounds of questions, let them know the team feels ready and invite them to bring their first topic.
-The user's first message may be a greeting or a topic. If it's a greeting, start the interview. If it's already a topic, briefly introduce the team and ask a couple quick get-to-know-you questions before diving in.`;
+TOPICS TO COVER (in roughly this order, one at a time):
+
+1. WHO THEY ARE: What does your business do and who do you serve? (Or if not a business, what do you spend your time on?)
+
+2. BUSINESS MODEL: How do you make money? Pricing, delivery, what a typical client looks like.
+
+3. TEAM: Who works for you or with you? Employees, contractors, freelancers, partners.
+
+4. TOOLS & SOFTWARE: What off-the-shelf software and tools are you currently using? (Go deep here. The more tools they list, the more the team can spot automation opportunities and custom apps they could build. Ask about categories: communication, project management, finance, marketing, CRM, scheduling, file storage, etc.)
+
+5. DAY TO DAY: What do you spend most of your time on day to day? What does a typical week look like?
+
+6. WHAT'S WORKING: What's working well right now? What are you proud of?
+
+7. WHAT'S BROKEN: What's frustrating or broken? What do you wish worked better?
+
+8. WISH LIST: What do you wish you had more time for?
+
+9. COMMUNICATION STYLE: How do you like to communicate? Direct, detailed, casual, formal? Do you prefer the team to be blunt or gentle when pushing back on ideas?
+
+10. 90-DAY GOALS: What are your goals for the next 90 days? What would make the biggest difference?
+
+11. PATTERNS & BLIND SPOTS: What are your patterns when you get stuck or distracted? What pulls you off track?
+
+12. ORGANIZATION: How do you like to stay organized? Do you want a running record of projects and progress? Should the team help track things across sessions?
+
+13. GUARDRAILS: If you start working on something outside your goals, do you want the team to gently ask if that's where you want to spend your time?
+
+14. BRAINSTORM PREFERENCES: What kind of help are you hoping to get from brainstorming sessions? Strategy, problem-solving, creative ideas, gut-checks, planning, something else?
+
+15. ANYTHING ELSE: Is there anything we haven't covered about you or your business that would be helpful for the team to know?
+
+AFTER ALL TOPICS ARE COVERED:
+- Summarize what the team has learned in a clear, organized way.
+- Let the user know that everything has been saved and the team will remember it across all future sessions.
+- Tell them they can download a file of this session to drop into their own Claude on their computer, so both systems stay in sync.
+- Invite them to bring their first brainstorming topic whenever they're ready.
+
+The user's first message will likely be a greeting since they chose to do the interview. Start with a warm welcome from 2-3 agents, then begin with topic 1.`;
   }
 
   // Load existing user context into prompt
