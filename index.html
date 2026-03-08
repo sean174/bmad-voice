@@ -618,6 +618,77 @@
       color: var(--text-mid);
     }
 
+    /* Voice choice overlay */
+    #voice-choice {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,8,0.92);
+      z-index: 100;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      padding: 40px;
+    }
+
+    #voice-choice.active {
+      display: flex;
+    }
+
+    #voice-choice h2 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 24px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    .choice-buttons {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .choice-btn {
+      flex: 1;
+      padding: 24px 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      color: var(--text);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .choice-btn:hover {
+      border-color: var(--red);
+      box-shadow: 0 0 16px rgba(232,51,42,0.15);
+    }
+
+    .choice-btn .choice-icon {
+      font-size: 28px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .choice-btn .choice-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .choice-hint {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-mid);
+      text-align: center;
+    }
+
     /* Toast notifications */
     .toast-container {
       position: fixed;
@@ -738,7 +809,7 @@
   <h1 class="headline">Ready when<br>you are.</h1>
   <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
-  <span class="privacy-note">Text by default. Turn on voices in the header to hear your team speak.</span>
+  <span class="privacy-note">You'll choose to read or listen after your first message.</span>
 </div>
 
 <!-- SCREEN 3: CHAT -->
@@ -749,6 +820,21 @@
     <div id="session-timer">00:00</div>
     <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voices Off</button>
     <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
+  </div>
+
+  <div id="voice-choice">
+    <h2>The team is ready.</h2>
+    <div class="choice-buttons">
+      <button class="choice-btn" id="choice-read">
+        <span class="choice-icon">&#9776;</span>
+        <span class="choice-label">Read</span>
+      </button>
+      <button class="choice-btn" id="choice-listen">
+        <span class="choice-icon">&#9835;</span>
+        <span class="choice-label">Listen</span>
+      </button>
+    </div>
+    <span class="choice-hint">You can switch anytime in the header.</span>
   </div>
 
   <div id="chat-area"></div>
@@ -824,6 +910,8 @@ let totalOutputTokens = 0;
 let totalCartesiaChars = 0;
 let isPlaying = false;
 let voiceEnabled = false;
+let hasChosenMode = false;
+let pendingAgentBlocks = null;
 let audioQueue = [];
 let currentAudio = null;
 let abortController = null;
@@ -1028,8 +1116,13 @@ async function sendMessage() {
     await new Promise(r => setTimeout(r, 400));
     removeThinking();
 
-    displayAgentBlocks(agentBlocks);
-    if (voiceEnabled) playAgentAudio(agentBlocks);
+    if (!hasChosenMode) {
+      pendingAgentBlocks = agentBlocks;
+      document.getElementById('voice-choice').classList.add('active');
+    } else {
+      displayAgentBlocks(agentBlocks);
+      if (voiceEnabled) playAgentAudio(agentBlocks);
+    }
 
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -1532,6 +1625,25 @@ voiceToggle.addEventListener('click', () => {
   voiceToggle.style.color = voiceEnabled ? 'var(--red)' : 'var(--text-mid)';
   if (!voiceEnabled) stopAudio();
 });
+
+// ---- VOICE CHOICE (first message) ----
+function handleVoiceChoice(listen) {
+  hasChosenMode = true;
+  voiceEnabled = listen;
+  voiceToggle.textContent = listen ? 'Voices On' : 'Voices Off';
+  voiceToggle.style.borderColor = listen ? 'var(--red)' : 'var(--border2)';
+  voiceToggle.style.color = listen ? 'var(--red)' : 'var(--text-mid)';
+  document.getElementById('voice-choice').classList.remove('active');
+
+  if (pendingAgentBlocks) {
+    displayAgentBlocks(pendingAgentBlocks);
+    if (listen) playAgentAudio(pendingAgentBlocks);
+    pendingAgentBlocks = null;
+  }
+}
+
+document.getElementById('choice-read').addEventListener('click', () => handleVoiceChoice(false));
+document.getElementById('choice-listen').addEventListener('click', () => handleVoiceChoice(true));
 
 // ---- END SESSION / LOGOUT ----
 document.getElementById('end-session-btn').addEventListener('click', () => {
