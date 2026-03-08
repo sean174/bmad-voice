@@ -8,6 +8,7 @@ export default function middleware(request) {
     url.pathname === '/manifest.json' ||
     url.pathname === '/api/login' ||
     url.pathname === '/api/context' ||
+    (url.pathname === '/api/export-session' && request.method === 'GET') ||
     url.pathname.startsWith('/avatars/') ||
     url.pathname.startsWith('/icons/') ||
     url.pathname === '/apple-touch-icon.png'

@@ -572,12 +572,13 @@
 
     #wrap-bar {
       display: flex;
+      gap: 10px;
       justify-content: center;
       padding: 10px 20px 0;
     }
 
-    #wrap-btn {
-      width: 100%;
+    #wrap-bar button {
+      flex: 1;
     }
 
     #controls {
@@ -845,6 +846,7 @@
     <div id="speaking-label"></div>
     <div id="wrap-bar">
       <button id="wrap-btn" class="btn-secondary">Wrap Up</button>
+      <button id="wrap-send-btn" class="btn-primary" style="display:none;">Wrap Up + Send to Claude</button>
     </div>
     <div id="controls">
       <input type="text" id="message-input" class="input-field" placeholder="Type or use WisprFlow..." maxlength="2000" autocomplete="off">
@@ -931,6 +933,7 @@ const chatArea = document.getElementById('chat-area');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const wrapBtn = document.getElementById('wrap-btn');
+const wrapSendBtn = document.getElementById('wrap-send-btn');
 const stopBtn = document.getElementById('stop-btn');
 const stopBar = document.getElementById('stop-bar');
 const sessionCostEl = document.getElementById('session-cost');
@@ -996,6 +999,11 @@ document.getElementById('start-btn').addEventListener('click', () => {
   messageInput.focus();
   startTimer();
   addStatus('Session started');
+
+  // Show "Send to Claude" wrap button for admin
+  if (userRole === 'admin') {
+    wrapSendBtn.style.display = 'block';
+  }
 
   // Unlock iOS audio
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1337,9 +1345,10 @@ function showStopButton(show) {
 }
 
 // ---- WRAP UP ----
-wrapBtn.addEventListener('click', wrapUp);
+wrapBtn.addEventListener('click', () => wrapUp(false));
+wrapSendBtn.addEventListener('click', () => wrapUp(true));
 
-async function wrapUp() {
+async function wrapUp(sendToClaude) {
   if (conversationHistory.length < 2) {
     showToast('Not enough conversation to wrap up', 'error');
     return;
@@ -1348,6 +1357,7 @@ async function wrapUp() {
   isWaiting = true;
   sendBtn.disabled = true;
   wrapBtn.disabled = true;
+  wrapSendBtn.disabled = true;
   addStatus('Creating summary...');
 
   const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this BMAD session including:
@@ -1378,6 +1388,7 @@ Include the session cost in the summary.`;
       isWaiting = false;
       sendBtn.disabled = false;
       wrapBtn.disabled = false;
+      wrapSendBtn.disabled = false;
       return;
     }
 
@@ -1438,6 +1449,7 @@ Include the session cost in the summary.`;
     wrap.appendChild(divider);
     wrap.appendChild(body);
     wrap.appendChild(cost);
+
     chatArea.appendChild(wrap);
     scrollToBottom();
 
@@ -1489,6 +1501,29 @@ Include the session cost in the summary.`;
     }).catch(console.error);
 
     showToast('Session saved', 'success');
+
+    // Export to Claude if requested
+    if (sendToClaude) {
+      try {
+        const exportResp = await apiFetch('/api/export-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summary: displayText,
+            messages: conversationHistory,
+            cost: sessionCost,
+            date: new Date().toISOString(),
+          }),
+        });
+        if (exportResp.ok) {
+          showToast('Session sent to Claude', 'success');
+        } else {
+          showToast('Failed to send to Claude', 'error');
+        }
+      } catch (e) {
+        showToast('Failed to send to Claude', 'error');
+      }
+    }
 
   } catch (err) {
     removeLastStatus();
