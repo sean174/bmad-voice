@@ -928,6 +928,7 @@ let userLabel = localStorage.getItem('bmad_label') || 'unknown';
 let conversationHistory = [];
 let sessionCost = 0;
 let sessionStartedAt = null;
+let sessionId = null;
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
 let totalCartesiaChars = 0;
@@ -1034,6 +1035,7 @@ let isNewUser = false;
 document.getElementById('start-btn').addEventListener('click', async () => {
   showScreen('chat-screen');
   sessionStartedAt = new Date();
+  sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
   addStatus('Session started');
 
@@ -1237,6 +1239,21 @@ async function _streamResponse() {
     }
 
     conversationHistory.push({ role: 'assistant', content: fullText });
+
+    // Log message exchange to database (async, fire and forget)
+    const lastUserMsg = [...conversationHistory].reverse().find(m => m.role === 'user');
+    if (lastUserMsg && sessionId) {
+      apiFetch('/api/conversation-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          user_label: userLabel,
+          user_message: lastUserMsg.content,
+          assistant_message: fullText,
+        }),
+      }).catch(console.error);
+    }
 
     const agentBlocks = parseAgentBlocks(fullText);
     updateThinkingStage('done');
