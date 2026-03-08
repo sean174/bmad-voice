@@ -158,6 +158,53 @@
     .screen { display: none; position: relative; z-index: 1; }
     .screen.active { display: flex; }
 
+    /* ---- SPLASH SCREEN ---- */
+    #splash-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: opacity 0.5s ease;
+    }
+    #splash-screen.fade-out { opacity: 0; pointer-events: none; }
+    #splash-screen img { width: 100px; height: 100px; border-radius: 12px; opacity: 0; transition: opacity 0.3s; }
+    #splash-screen img.show { opacity: 1; }
+
+    .flip-text {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .flip-char {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--text);
+      opacity: 0;
+      transform: rotateX(-90deg);
+      transition: all 0.15s ease;
+    }
+    .flip-char.show {
+      opacity: 1;
+      transform: rotateX(0deg);
+    }
+    .flip-line2 .flip-char {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--text-dim);
+    }
+
     /* ---- SCREEN 1: LOGIN ---- */
     #login-screen {
       flex-direction: column;
@@ -1130,6 +1177,13 @@
   <p id="rate-limit-msg">You've hit the limit. Take a breather and try again shortly.</p>
 </div>
 
+<!-- SPLASH SCREEN -->
+<div id="splash-screen">
+  <img src="/icons/icon-192.png" alt="" id="splash-icon">
+  <div class="flip-text" id="flip-title"></div>
+  <div class="flip-text flip-line2" id="flip-tagline"></div>
+</div>
+
 <!-- SCREEN 1: LOGIN -->
 <div id="login-screen" class="screen active">
   <img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;">
@@ -1228,6 +1282,58 @@
 </div>
 
 <script>
+// ---- SPLASH SCREEN ----
+(function() {
+  // Skip splash if already logged in (returning to app)
+  if (localStorage.getItem('bmad_token')) {
+    document.getElementById('splash-screen').style.display = 'none';
+  } else {
+    const title = 'MASTERMIND';
+    const tagline = 'Your advisory board is ready.';
+    const titleEl = document.getElementById('flip-title');
+    const taglineEl = document.getElementById('flip-tagline');
+    const icon = document.getElementById('splash-icon');
+
+    // Build character spans
+    for (const ch of title) {
+      const span = document.createElement('span');
+      span.className = 'flip-char';
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      titleEl.appendChild(span);
+    }
+    for (const ch of tagline) {
+      const span = document.createElement('span');
+      span.className = 'flip-char';
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      taglineEl.appendChild(span);
+    }
+
+    // Animate: icon fades in, then title flips, then tagline flips
+    setTimeout(() => icon.classList.add('show'), 100);
+
+    const titleChars = titleEl.querySelectorAll('.flip-char');
+    const taglineChars = taglineEl.querySelectorAll('.flip-char');
+
+    titleChars.forEach((ch, i) => {
+      setTimeout(() => ch.classList.add('show'), 300 + i * 35);
+    });
+
+    const taglineStart = 300 + titleChars.length * 35 + 150;
+    taglineChars.forEach((ch, i) => {
+      setTimeout(() => ch.classList.add('show'), taglineStart + i * 20);
+    });
+
+    // Fade out splash and show login
+    const totalTime = taglineStart + taglineChars.length * 20 + 600;
+    setTimeout(() => {
+      document.getElementById('splash-screen').classList.add('fade-out');
+      setTimeout(() => {
+        document.getElementById('splash-screen').style.display = 'none';
+      }, 500);
+    }, totalTime);
+  }
+})();
+
 // ---- CONFIG ----
 const AGENT_COLORS = {
   ANALYST: '#4A9EFF',
