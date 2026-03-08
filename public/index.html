@@ -1651,12 +1651,14 @@ document.getElementById('start-btn').addEventListener('click', async () => {
       addStatus('Session started');
       showTeamIntros();
       showSuggestedPrompts(true);
+      chatArea.scrollTop = 0;
       messageInput.focus();
     });
   } else if (!userData.interview_complete && !nudgedToday) {
     // Returning user, no interview yet, first login today: nudge
     addStatus('Session started');
     showInterviewNudge();
+    chatArea.scrollTop = 0;
     messageInput.focus();
   } else {
     // Returning user, interview done or already nudged today
