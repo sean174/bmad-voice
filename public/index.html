@@ -1437,8 +1437,35 @@ function showSuggestedPrompts(showInterview) {
       <li>Get your systems talking to each other</li>
       <li>Analyze data and spot patterns you're missing</li>
     </ul>
-    <div class="prompt-body" style="font-weight:700; color:var(--text); margin-bottom:10px;">Try one of these to start:</div>
   `;
+
+  if (showInterview) {
+    const recDiv = document.createElement('div');
+    recDiv.innerHTML = `
+      <div class="prompt-body" style="font-weight:700; color:var(--text);">We suggest starting with a deep dive on your business so we can get the whole picture before we start.</div>
+      <div class="prompt-body">We have a 30-40 minute interview so the team can learn your business inside and out. You can start now and come back later if you don't finish, or knock it out in one session.</div>
+    `;
+    card.appendChild(recDiv);
+
+    const interviewBtn = document.createElement('button');
+    interviewBtn.className = 'btn-primary';
+    interviewBtn.style.width = '100%';
+    interviewBtn.style.marginBottom = '4px';
+    interviewBtn.textContent = 'Start the Interview';
+    interviewBtn.id = 'start-interview-btn';
+    card.appendChild(interviewBtn);
+
+    const estimate = document.createElement('div');
+    estimate.style.cssText = 'text-align:center; font-family:"Space Mono",monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:20px;';
+    estimate.textContent = '30-40 minutes';
+    card.appendChild(estimate);
+  }
+
+  const orLabel = document.createElement('div');
+  orLabel.className = 'prompt-body';
+  orLabel.style.cssText = 'font-weight:700; color:var(--text); margin-bottom:10px;';
+  orLabel.textContent = showInterview ? 'Or try one of these:' : 'Try one of these to start:';
+  card.appendChild(orLabel);
 
   const prompts = [
     "Find the biggest automation opportunities in my business",
@@ -1463,18 +1490,11 @@ function showSuggestedPrompts(showInterview) {
     card.appendChild(btn);
   }
 
-  if (showInterview) {
-    const interviewNote = document.createElement('div');
-    interviewNote.className = 'interview-link';
-    interviewNote.innerHTML = 'Want us to get to know you in depth first? We have a 30-40 minute interview where the team learns your business inside and out. You can always come back to it later. <a id="start-interview-link">Start the interview</a>';
-    card.appendChild(interviewNote);
-  }
-
   chatArea.appendChild(card);
   scrollToBottom();
 
   if (showInterview) {
-    document.getElementById('start-interview-link').addEventListener('click', () => {
+    document.getElementById('start-interview-btn').addEventListener('click', () => {
       const promptCard = document.getElementById('prompt-card');
       if (promptCard) promptCard.remove();
       conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
