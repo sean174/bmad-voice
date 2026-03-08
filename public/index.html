@@ -1357,6 +1357,7 @@ let totalCartesiaChars = 0;
 let isPlaying = false;
 let voiceEnabled = false;
 let hasChosenMode = false;
+const VOICE_ENABLED_USERS = ['tyler', 'kate'];
 let pendingAgentBlocks = null;
 let audioQueue = [];
 let currentAudio = null;
@@ -1643,7 +1644,7 @@ function showInterviewNudge() {
 const TOUR_STEPS = [
   { fullscreen: true, headline: "Welcome to Mastermind.", text: 'You now have access to a team of 8 AI advisors who know business, strategy, tech, and storytelling. They don\'t just answer questions. They challenge each other, push back, and think along with you.<br><br>It\'s like having a boardroom full of experts available whenever you need them, for as long as you need them, to talk about exactly what you\'d like input on. They will never get tired, they will never get bored, they will never need to switch to another topic. They are here for you, and you alone.<br><br>Describe what you\'re working on and they\'ll get to work.', btnText: "Let's Go" },
   { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
-  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below' },
+  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below', voiceOnly: true },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
   { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to the team.' : 'Type here, or tap the mic button to talk to the team.', position: 'above' },
   { fullscreen: true, headline: "All done.", text: "Let's meet the team.", btnText: 'Meet the team' },
@@ -1673,6 +1674,12 @@ function startTour(callback) {
 }
 
 function showTourStep() {
+  // Skip voice-only tour steps for non-voice users
+  if (TOUR_STEPS[tourStep].voiceOnly && !VOICE_ENABLED_USERS.includes(userLabel)) {
+    tourStep++;
+    if (tourStep >= TOUR_STEPS.length) return;
+    return showTourStep();
+  }
   const step = TOUR_STEPS[tourStep];
   const highlight = document.getElementById('tour-highlight');
   const tooltip = document.getElementById('tour-tooltip');
@@ -1746,6 +1753,13 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   sessionStartedAt = new Date();
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
+
+  // Only voice-enabled users get the toggle and voice choice
+  if (!VOICE_ENABLED_USERS.includes(userLabel)) {
+    hasChosenMode = true;
+    voiceEnabled = false;
+    document.querySelector('.voice-toggle-pill').style.display = 'none';
+  }
 
   // Unlock iOS audio - play a silent sound to enable future programmatic playback
   try {
