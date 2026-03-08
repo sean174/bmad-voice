@@ -698,6 +698,7 @@
     <div id="header-title">BMAD Voice</div>
     <div id="session-cost">$0.00</div>
     <div id="session-timer">00:00</div>
+    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voice On</button>
     <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
   </div>
 
@@ -773,6 +774,7 @@ let totalInputTokens = 0;
 let totalOutputTokens = 0;
 let totalCartesiaChars = 0;
 let isPlaying = false;
+let voiceEnabled = true;
 let audioQueue = [];
 let currentAudio = null;
 let abortController = null;
@@ -967,7 +969,7 @@ async function sendMessage() {
 
     const agentBlocks = parseAgentBlocks(fullText);
     displayAgentBlocks(agentBlocks);
-    playAgentAudio(agentBlocks);
+    if (voiceEnabled) playAgentAudio(agentBlocks);
 
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -1359,6 +1361,16 @@ function showRateLimit(msg) {
     document.getElementById('rate-limit-overlay').classList.remove('active');
   }, 10000);
 }
+
+// ---- VOICE TOGGLE ----
+const voiceToggle = document.getElementById('voice-toggle');
+voiceToggle.addEventListener('click', () => {
+  voiceEnabled = !voiceEnabled;
+  voiceToggle.textContent = voiceEnabled ? 'Voice On' : 'Voice Off';
+  voiceToggle.style.borderColor = voiceEnabled ? 'var(--border2)' : 'var(--red)';
+  voiceToggle.style.color = voiceEnabled ? 'var(--text-mid)' : 'var(--red)';
+  if (!voiceEnabled) stopAudio();
+});
 
 // ---- END SESSION / LOGOUT ----
 document.getElementById('end-session-btn').addEventListener('click', () => {
