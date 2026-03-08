@@ -3,14 +3,19 @@
   "short_name": "BMAD",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
-  "theme_color": "#1a1a2e",
+  "background_color": "#080808",
+  "theme_color": "#080808",
   "description": "Voice-powered AI brainstorming with your BMAD agent team",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%234A9EFF'>B</text></svg>",
-      "sizes": "any",
-      "type": "image/svg+xml"
+      "src": "/public/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/public/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
