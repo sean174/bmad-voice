@@ -1444,11 +1444,34 @@ Include the session cost in the summary.`;
     cost.className = 'wrap-cost';
     cost.textContent = `Session cost: $${sessionCost.toFixed(4)}`;
 
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'btn-secondary';
+    dlBtn.textContent = 'Download Session';
+    dlBtn.style.marginTop = '16px';
+    dlBtn.addEventListener('click', () => {
+      const lines = [`# Brainstorm Session\n`, `**Date:** ${new Date().toLocaleDateString()}\n`, `**Cost:** $${sessionCost.toFixed(4)}\n`, `---\n`, `## Summary\n`, displayText, `\n---\n`, `## Full Conversation\n`];
+      for (const msg of conversationHistory) {
+        if (msg.role === 'user') {
+          lines.push(`### You\n${msg.content}\n`);
+        } else {
+          lines.push(`### Team\n${msg.content}\n`);
+        }
+      }
+      const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `brainstorm-${new Date().toISOString().slice(0,10)}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
     wrap.appendChild(kicker);
     wrap.appendChild(headline);
     wrap.appendChild(divider);
     wrap.appendChild(body);
     wrap.appendChild(cost);
+    wrap.appendChild(dlBtn);
 
     chatArea.appendChild(wrap);
     scrollToBottom();
