@@ -106,10 +106,29 @@
       background: #16213e;
     }
 
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .agent-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
     .agent-name {
       font-weight: 700;
       font-size: 13px;
-      margin-bottom: 4px;
     }
 
     .agent-text {
@@ -268,6 +287,17 @@ const AGENT_DISPLAY = {
   PROBLEM_SOLVER: 'Dr. Quinn (Problem Solver)',
   BRAINSTORM_COACH: 'Carson (Brainstorm Coach)',
   STORYTELLER: 'Sophia (Storyteller)',
+};
+
+const AGENT_INITIALS = {
+  ANALYST: 'MA',
+  PM: 'JP',
+  ARCHITECT: 'WA',
+  DEVELOPER: 'AD',
+  STRATEGIST: 'VS',
+  PROBLEM_SOLVER: 'DQ',
+  BRAINSTORM_COACH: 'CB',
+  STORYTELLER: 'SS',
 };
 
 let conversationHistory = [];
@@ -429,16 +459,27 @@ function displayAgentBlocks(blocks) {
     div.className = 'message agent';
     div.dataset.agent = block.agent;
 
+    const header = document.createElement('div');
+    header.className = 'agent-header';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'agent-avatar';
+    avatar.style.backgroundColor = AGENT_COLORS[block.agent] || '#555';
+    avatar.textContent = AGENT_INITIALS[block.agent] || '?';
+
     const name = document.createElement('div');
     name.className = 'agent-name';
     name.style.color = AGENT_COLORS[block.agent] || '#fff';
     name.textContent = AGENT_DISPLAY[block.agent] || block.agent;
 
+    header.appendChild(avatar);
+    header.appendChild(name);
+
     const text = document.createElement('div');
     text.className = 'agent-text';
     text.textContent = block.text;
 
-    div.appendChild(name);
+    div.appendChild(header);
     div.appendChild(text);
     chatArea.appendChild(div);
   }
