@@ -60,6 +60,7 @@ export default async function handler(req, res) {
         transcript: cleanText,
         voice: { mode: 'id', id: voiceId },
         language: 'en',
+        speed: 1.5,
         output_format: {
           container: 'mp3',
           bit_rate: 128000,
