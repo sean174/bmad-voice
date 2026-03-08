@@ -417,20 +417,69 @@
       50% { box-shadow: 0 0 24px rgba(232,51,42,0.6); }
     }
 
-    /* Thinking indicator */
-    .thinking-msg {
-      align-self: flex-start;
-      padding: 16px;
-      color: var(--text-dim);
+    /* Progress indicator */
+    .progress-card {
+      align-self: stretch;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 16px 20px;
+    }
+
+    .progress-status {
       font-family: 'Space Mono', monospace;
       font-size: 10px;
       letter-spacing: 2px;
       text-transform: uppercase;
+      color: var(--text-mid);
+      margin-bottom: 12px;
     }
 
-    .thinking-dots::after {
-      content: '';
-      animation: dots 1.5s steps(4, end) infinite;
+    .progress-bar-track {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--red);
+      border-radius: 2px;
+      transition: width 0.6s ease;
+      width: 0%;
+    }
+
+    .progress-agents {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .progress-agent-pip {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      overflow: hidden;
+      opacity: 0.3;
+      transition: opacity 0.3s, box-shadow 0.3s;
+    }
+
+    .progress-agent-pip.active {
+      opacity: 1;
+      box-shadow: 0 0 10px rgba(232,51,42,0.4);
+    }
+
+    .progress-agent-pip.done {
+      opacity: 0.6;
+    }
+
+    .progress-agent-pip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     @keyframes dots {
@@ -689,7 +738,7 @@
   <h1 class="headline">Ready when<br>you are.</h1>
   <p class="subtext" id="last-session-text">Start a brainstorming session with your team.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
-  <span class="privacy-note">Private. End-to-end session.</span>
+  <span class="privacy-note">Agents respond with voice by default. Toggle in the header to read instead.</span>
 </div>
 
 <!-- SCREEN 3: CHAT -->
@@ -698,7 +747,7 @@
     <div id="header-title">BMAD Voice</div>
     <div id="session-cost">$0.00</div>
     <div id="session-timer">00:00</div>
-    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voice On</button>
+    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;" title="Toggle agent voices on or off">Voice On</button>
     <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
   </div>
 
@@ -939,8 +988,7 @@ async function sendMessage() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
-
-    removeThinking();
+    let streamStarted = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -953,7 +1001,13 @@ async function sendMessage() {
         if (line.startsWith('data: ')) {
           try {
             const data = JSON.parse(line.slice(6));
-            if (data.type === 'text') fullText += data.content;
+            if (data.type === 'text') {
+              if (!streamStarted) {
+                streamStarted = true;
+                updateThinkingStage('streaming');
+              }
+              fullText += data.content;
+            }
             if (data.type === 'done' && data.usage) {
               totalInputTokens += data.usage.inputTokens;
               totalOutputTokens += data.usage.outputTokens;
@@ -968,6 +1022,12 @@ async function sendMessage() {
     conversationHistory.push({ role: 'assistant', content: fullText });
 
     const agentBlocks = parseAgentBlocks(fullText);
+    updateThinkingStage('done');
+
+    // Brief pause to show 100% before switching to messages
+    await new Promise(r => setTimeout(r, 400));
+    removeThinking();
+
     displayAgentBlocks(agentBlocks);
     if (voiceEnabled) playAgentAudio(agentBlocks);
 
@@ -1061,11 +1121,36 @@ async function playAgentAudio(blocks) {
   isPlaying = true;
   showStopButton(true);
 
+  // Show agent pips in speaking label area
+  speakingLabel.innerHTML = '';
+  const pipRow = document.createElement('div');
+  pipRow.style.cssText = 'display:flex; gap:6px; justify-content:center; align-items:center;';
+  for (let j = 0; j < blocks.length; j++) {
+    const pip = document.createElement('div');
+    pip.className = 'progress-agent-pip';
+    pip.dataset.pipIdx = j;
+    const src = AGENT_AVATARS[blocks[j].agent];
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src;
+      pip.appendChild(img);
+    }
+    pipRow.appendChild(pip);
+  }
+  speakingLabel.appendChild(pipRow);
+  speakingLabel.style.display = 'block';
+
   for (let i = 0; i < audioQueue.length; i++) {
     if (!isPlaying) break;
 
+    // Update pips
+    pipRow.querySelectorAll('.progress-agent-pip').forEach((p, idx) => {
+      p.classList.remove('active', 'done');
+      if (idx < i) p.classList.add('done');
+      if (idx === i) p.classList.add('active');
+    });
+
     const block = audioQueue[i];
-    speakingLabel.textContent = AGENT_DISPLAY[block.agent] || block.agent;
     speakingLabel.style.display = 'block';
 
     // Mark speaking
@@ -1310,16 +1395,89 @@ function addMessage(role, text) {
 
 function showThinking() {
   const div = document.createElement('div');
-  div.className = 'thinking-msg';
+  div.className = 'progress-card';
   div.id = 'thinking';
-  div.innerHTML = 'Agents are thinking<span class="thinking-dots"></span>';
+
+  const status = document.createElement('div');
+  status.className = 'progress-status';
+  status.id = 'progress-status';
+  status.textContent = 'Calling the team...';
+
+  const track = document.createElement('div');
+  track.className = 'progress-bar-track';
+
+  const fill = document.createElement('div');
+  fill.className = 'progress-bar-fill';
+  fill.id = 'progress-fill';
+  track.appendChild(fill);
+
+  const agents = document.createElement('div');
+  agents.className = 'progress-agents';
+  agents.id = 'progress-agents';
+
+  div.appendChild(status);
+  div.appendChild(track);
+  div.appendChild(agents);
   chatArea.appendChild(div);
   scrollToBottom();
+
+  // Stage 1: Connecting
+  fill.style.width = '15%';
+
+  // Stage 2: after a beat
+  setTimeout(() => {
+    if (document.getElementById('progress-status')) {
+      document.getElementById('progress-status').textContent = 'Team is listening...';
+      fill.style.width = '35%';
+    }
+  }, 800);
+}
+
+function updateThinkingStage(stage) {
+  const status = document.getElementById('progress-status');
+  const fill = document.getElementById('progress-fill');
+  if (!status || !fill) return;
+
+  if (stage === 'streaming') {
+    status.textContent = 'Agents are responding...';
+    fill.style.width = '65%';
+  } else if (stage === 'done') {
+    status.textContent = 'Response ready';
+    fill.style.width = '100%';
+  }
 }
 
 function removeThinking() {
   const el = document.getElementById('thinking');
   if (el) el.remove();
+}
+
+function showAudioProgress(blocks) {
+  const container = document.getElementById('progress-agents');
+  if (!container) return;
+
+  container.innerHTML = '';
+  for (const block of blocks) {
+    const pip = document.createElement('div');
+    pip.className = 'progress-agent-pip';
+    pip.dataset.agent = block.agent;
+    const src = AGENT_AVATARS[block.agent];
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src;
+      pip.appendChild(img);
+    }
+    container.appendChild(pip);
+  }
+}
+
+function updateAudioProgress(currentIndex) {
+  const pips = document.querySelectorAll('.progress-agent-pip');
+  pips.forEach((pip, i) => {
+    pip.classList.remove('active', 'done');
+    if (i < currentIndex) pip.classList.add('done');
+    if (i === currentIndex) pip.classList.add('active');
+  });
 }
 
 function addStatus(text) {
