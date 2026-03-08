@@ -86,6 +86,29 @@ Only include agents that have something meaningful to add. Never force all agent
 Never use stage directions, actions in asterisks, or roleplay narration like *leans back* or *pauses thoughtfully*. Just speak naturally.
 Valid agent tags: [ANALYST], [PM], [ARCHITECT], [DEVELOPER], [STRATEGIST], [PROBLEM_SOLVER], [BRAINSTORM_COACH], [STORYTELLER]`;
 
+async function getAdminContext() {
+  if (!process.env.POSTGRES_URL) return '';
+  const { Pool } = require('@neondatabase/serverless');
+  const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+  try {
+    const result = await pool.query('SELECT context_text FROM admin_context WHERE id = 1');
+    return result.rows.length > 0 ? result.rows[0].context_text : '';
+  } catch (e) {
+    return '';
+  } finally {
+    await pool.end();
+  }
+}
+
+function isAdminUser(userLabel) {
+  const entries = (process.env.AUTH_PASSWORDS || '').split(',').map(e => e.trim()).filter(Boolean);
+  for (const entry of entries) {
+    const parts = entry.split(':');
+    if (parts.length === 3 && parts[0] === userLabel && parts[2] === 'admin') return true;
+  }
+  return false;
+}
+
 async function checkRateLimits() {
   if (!process.env.POSTGRES_URL) return { allowed: true };
 
@@ -185,6 +208,15 @@ export default async function handler(req, res) {
 
   const managedMessages = summarizeOlderMessages(messages);
 
+  // Load business context for admin users only
+  let systemPrompt = SYSTEM_PROMPT;
+  if (isAdminUser(user_label)) {
+    const context = await getAdminContext();
+    if (context) {
+      systemPrompt = SYSTEM_PROMPT + '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
+    }
+  }
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -196,7 +228,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: managedMessages,
         stream: true,
       }),
