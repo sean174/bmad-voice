@@ -6,8 +6,14 @@ MEMORY_DIR="/Users/seanthomas/.claude/projects/-Users-seanthomas/memory"
 CLAUDE_MD="/Users/seanthomas/.claude/CLAUDE.md"
 API_URL="https://bmad-voice.vercel.app/api/context"
 
-# Read the session secret from Vercel env (pulled locally)
-SECRET=$(grep SESSION_SECRET /Users/seanthomas/bmad-voice/.env.local 2>/dev/null | head -1 | cut -d= -f2-)
+# Read the session secret from .env.local
+SECRET=$(python3 -c "
+for line in open('/Users/seanthomas/bmad-voice/.env.local'):
+    if line.startswith('SESSION_SECRET='):
+        val = line.strip().split('=',1)[1].strip('\"')
+        print(val)
+        break
+")
 
 if [ -z "$SECRET" ]; then
   echo "ERROR: No SESSION_SECRET found. Run 'npx vercel env pull .env.local' first."
@@ -19,12 +25,16 @@ CONTEXT=""
 
 # Add key sections from CLAUDE.md (skip credentials and file paths)
 if [ -f "$CLAUDE_MD" ]; then
-  CONTEXT+="## Who I Am
-$(sed -n '/^## Who I Am/,/^## /p' "$CLAUDE_MD" | head -n -1)
-
-"
-  CONTEXT+="## 90-Day Goals
-$(sed -n '/^## 90-Day Goals/,/^## /p' "$CLAUDE_MD" | head -n -1)
+  CONTEXT+="$(python3 -c "
+import re
+text = open('$CLAUDE_MD').read()
+# Extract Who I Am section
+m = re.search(r'## Who I Am\n(.*?)(?=\n## )', text, re.DOTALL)
+if m: print('## Who I Am\n' + m.group(1))
+# Extract 90-Day Goals section
+m = re.search(r'## 90-Day Goals.*?\n(.*?)(?=\n## )', text, re.DOTALL)
+if m: print('## 90-Day Goals\n' + m.group(1))
+")
 
 "
 fi
