@@ -257,10 +257,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
+      padding: 20px 20px;
       border-bottom: 1px solid var(--border);
       background: var(--bg);
       flex-shrink: 0;
+      gap: 10px;
+    }
+
+    #header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
     #header-title {
@@ -269,6 +276,11 @@
       letter-spacing: 3px;
       text-transform: uppercase;
       color: var(--text-mid);
+    }
+
+    #header-stats {
+      display: flex;
+      gap: 12px;
     }
 
     #session-cost {
@@ -282,6 +294,107 @@
       font-family: 'Space Mono', monospace;
       font-size: 10px;
       letter-spacing: 1px;
+      color: var(--text-dim);
+    }
+
+    /* Voice toggle pill */
+    .voice-toggle-pill {
+      display: flex;
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .voice-toggle-pill button {
+      padding: 8px 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+
+    .voice-toggle-pill button.active {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .voice-toggle-pill button:not(.active) {
+      background: var(--bg);
+      color: #fff;
+    }
+
+    /* End session overlay */
+    #end-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,8,0.95);
+      z-index: 200;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      padding: 40px;
+    }
+
+    #end-overlay.active {
+      display: flex;
+    }
+
+    #end-overlay h2 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 24px;
+      color: var(--text);
+      text-align: center;
+    }
+
+    #end-overlay .end-stats {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    /* Download screen */
+    #download-screen {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg);
+      z-index: 200;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      padding: 40px;
+      text-align: center;
+    }
+
+    #download-screen.active {
+      display: flex;
+    }
+
+    #download-screen h2 {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 24px;
+      color: var(--text);
+    }
+
+    #download-screen .countdown {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
       color: var(--text-dim);
     }
 
@@ -570,17 +683,6 @@
       flex-shrink: 0;
     }
 
-    #wrap-bar {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      padding: 10px 20px 0;
-    }
-
-    #wrap-bar button {
-      flex: 1;
-    }
-
     #controls {
       padding: 12px 20px 16px;
       display: flex;
@@ -823,11 +925,41 @@
 <!-- SCREEN 3: CHAT -->
 <div id="chat-screen" class="screen">
   <div id="header">
-    <div id="header-title">Brainstorm</div>
-    <div id="session-cost">$0.00</div>
-    <div id="session-timer">00:00</div>
-    <button id="voice-toggle" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">Voices Off</button>
+    <div id="header-left">
+      <div id="header-title">Brainstorm</div>
+      <div id="header-stats">
+        <div id="session-cost">$0.00</div>
+        <div id="session-timer">00:00</div>
+      </div>
+    </div>
+    <div class="voice-toggle-pill">
+      <button id="voice-off-btn" class="active">Voice Off</button>
+      <button id="voice-on-btn">Voice On</button>
+    </div>
     <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
+  </div>
+
+  <!-- End session overlay -->
+  <div id="end-overlay">
+    <h2>Session complete.</h2>
+    <div class="end-stats" id="end-stats"></div>
+    <div class="choice-buttons">
+      <button class="choice-btn" id="end-logout">
+        <span class="choice-label">Log Out</span>
+      </button>
+      <button class="choice-btn" id="end-download">
+        <span class="choice-label">Get Download</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Download screen -->
+  <div id="download-screen">
+    <h2>Your session is ready.</h2>
+    <div id="download-status">Preparing summary...</div>
+    <button id="download-btn" class="btn-primary" style="display:none;">Download Session</button>
+    <div class="countdown" id="logout-countdown" style="display:none;"></div>
+    <button id="logout-now-btn" class="btn-secondary" style="display:none;">Log Out Now</button>
   </div>
 
   <div id="voice-choice">
@@ -861,12 +993,8 @@
 
   <div id="controls-wrap">
     <div id="speaking-label"></div>
-    <div id="wrap-bar">
-      <button id="wrap-btn" class="btn-secondary">Wrap Up</button>
-      <button id="wrap-send-btn" class="btn-primary" style="display:none;">Wrap Up + Send to Claude</button>
-    </div>
     <div id="controls">
-      <input type="text" id="message-input" class="input-field" placeholder="Type or use WisprFlow..." maxlength="2000" autocomplete="off">
+      <input type="text" id="message-input" class="input-field" placeholder="What's on your mind?" maxlength="2000" autocomplete="off">
       <button id="send-btn" class="btn-primary">Send</button>
     </div>
     <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
@@ -950,8 +1078,6 @@ const chatScreen = document.getElementById('chat-screen');
 const chatArea = document.getElementById('chat-area');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
-const wrapBtn = document.getElementById('wrap-btn');
-const wrapSendBtn = document.getElementById('wrap-send-btn');
 const stopBtn = document.getElementById('stop-btn');
 const stopBar = document.getElementById('stop-bar');
 const sessionCostEl = document.getElementById('session-cost');
@@ -1038,11 +1164,6 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
   addStatus('Session started');
-
-  // Show "Send to Claude" wrap button for admin
-  if (userRole === 'admin') {
-    wrapSendBtn.style.display = 'block';
-  }
 
   // Unlock iOS audio
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1477,277 +1598,6 @@ function showStopButton(show) {
   }
 }
 
-// ---- WRAP UP ----
-wrapBtn.addEventListener('click', () => wrapUp(false));
-wrapSendBtn.addEventListener('click', () => wrapUp(true));
-
-async function wrapUp(sendToClaude) {
-  if (conversationHistory.length < 2) {
-    showToast('Not enough conversation to wrap up', 'error');
-    return;
-  }
-
-  isWaiting = true;
-  sendBtn.disabled = true;
-  wrapBtn.disabled = true;
-  wrapSendBtn.disabled = true;
-  addStatus('Creating summary...');
-
-  const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this brainstorming session including:
-
-1. Executive Summary (3 to 5 bullet points of the most important outcomes)
-2. Key Insights and Decisions Made
-3. Open Questions That Need Answers
-4. Action Items (be specific and actionable)
-
-Format the action items as a JSON array at the very end, on its own line, wrapped in <tasks> tags:
-<tasks>[{"title": "Task name", "notes": "Details", "due_date": "YYYY-MM-DD"}]</tasks>
-
-Session cost: $${sessionCost.toFixed(4)}
-Include the session cost in the summary.`;
-
-  const wrapMessages = [...conversationHistory, { role: 'user', content: wrapPrompt }];
-
-  try {
-    const response = await apiFetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: wrapMessages, user_label: userLabel }),
-    });
-
-    if (!response.ok) {
-      removeLastStatus();
-      showToast('Wrap up failed', 'error');
-      isWaiting = false;
-      sendBtn.disabled = false;
-      wrapBtn.disabled = false;
-      wrapSendBtn.disabled = false;
-      return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let summaryText = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value);
-      for (const line of chunk.split('\n')) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'text') summaryText += data.content;
-            if (data.type === 'done' && data.usage) {
-              totalInputTokens += data.usage.inputTokens;
-              totalOutputTokens += data.usage.outputTokens;
-              sessionCost += data.usage.estimatedCost;
-              updateCost();
-            }
-          } catch (e) {}
-        }
-      }
-    }
-
-    removeLastStatus();
-
-    const tasksMatch = summaryText.match(/<tasks>([\s\S]*?)<\/tasks>/);
-    const displayText = summaryText.replace(/<tasks>[\s\S]*?<\/tasks>/, '').trim();
-
-    // Build styled summary
-    const wrap = document.createElement('div');
-    wrap.className = 'wrap-summary';
-
-    const kicker = document.createElement('div');
-    kicker.className = 'wrap-kicker';
-    kicker.textContent = 'Session Complete';
-
-    const headline = document.createElement('div');
-    headline.className = 'wrap-headline';
-    headline.textContent = "Here's what we built.";
-
-    const divider = document.createElement('div');
-    divider.className = 'wrap-divider';
-
-    const body = document.createElement('div');
-    body.className = 'wrap-body';
-    body.textContent = displayText;
-
-    const cost = document.createElement('div');
-    cost.className = 'wrap-cost';
-    cost.textContent = `Session cost: $${sessionCost.toFixed(4)}`;
-
-    const dlBtn = document.createElement('button');
-    dlBtn.className = 'btn-secondary';
-    dlBtn.textContent = 'Download Session';
-    dlBtn.style.marginTop = '16px';
-    dlBtn.addEventListener('click', () => {
-      const lines = [`# Brainstorm Session\n`, `**Date:** ${new Date().toLocaleDateString()}\n`, `---\n`, `## Summary\n`, displayText, `\n---\n`, `## Full Conversation\n`];
-      for (const msg of conversationHistory) {
-        if (msg.role === 'user') {
-          lines.push(`### You\n${msg.content}\n`);
-        } else {
-          lines.push(`### Team\n${msg.content}\n`);
-        }
-      }
-      const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `brainstorm-${new Date().toISOString().slice(0,10)}.md`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    wrap.appendChild(kicker);
-    wrap.appendChild(headline);
-    wrap.appendChild(divider);
-    wrap.appendChild(body);
-    wrap.appendChild(cost);
-    wrap.appendChild(dlBtn);
-
-    chatArea.appendChild(wrap);
-    scrollToBottom();
-
-    // Read executive summary aloud
-    const execMatch = displayText.match(/Executive Summary[\s\S]*?(?=\n\n|Key Insights|$)/i);
-    if (execMatch) {
-      await playAgentAudio([{ agent: 'ANALYST', text: execMatch[0] }]);
-    }
-
-    // Push tasks to Asana (admin only)
-    if (tasksMatch && userRole === 'admin') {
-      try {
-        const tasks = JSON.parse(tasksMatch[1]);
-        if (tasks.length > 0) {
-          const taskResponse = await apiFetch('/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tasks }),
-          });
-
-          if (taskResponse.ok) {
-            const result = await taskResponse.json();
-            const succeeded = result.results.filter(r => r.success).length;
-            showToast(`${succeeded} task(s) created in Asana`, 'success');
-          } else {
-            showToast('Failed to create Asana tasks', 'error');
-          }
-        }
-      } catch (e) {
-        showToast('Could not parse action items', 'error');
-      }
-    }
-
-    // Save session
-    await apiFetch('/api/usage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        started_at: sessionStartedAt.toISOString(),
-        ended_at: new Date().toISOString(),
-        total_input_tokens: totalInputTokens,
-        total_output_tokens: totalOutputTokens,
-        total_cartesia_characters: totalCartesiaChars,
-        estimated_cost_usd: sessionCost,
-        summary_text: displayText,
-        messages_json: conversationHistory,
-        user_label: userLabel,
-      }),
-    }).catch(console.error);
-
-    showToast('Session saved', 'success');
-
-    // Extract memories and save to user context
-    try {
-      const memoryPrompt = `Based on this conversation, extract the key facts worth remembering about this user for future sessions. Include:
-- Who they are, what they do
-- Projects or goals they mentioned
-- Preferences they expressed
-- Key decisions made
-- Important context for next time
-
-Format as a concise bullet list. Only include facts, not opinions. Keep it under 500 words.`;
-
-      const memResp = await apiFetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...conversationHistory, { role: 'user', content: memoryPrompt }],
-          user_label: userLabel,
-        }),
-      });
-
-      if (memResp.ok) {
-        const memReader = memResp.body.getReader();
-        const memDecoder = new TextDecoder();
-        let memoryText = '';
-        while (true) {
-          const { done, value } = await memReader.read();
-          if (done) break;
-          for (const line of memDecoder.decode(value).split('\n')) {
-            if (line.startsWith('data: ')) {
-              try {
-                const d = JSON.parse(line.slice(6));
-                if (d.type === 'text') memoryText += d.content;
-              } catch (e) {}
-            }
-          }
-        }
-
-        // Strip agent tags from memory extraction
-        memoryText = memoryText.replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*/g, '').trim();
-
-        if (memoryText) {
-          const dateStamp = new Date().toLocaleDateString();
-          await apiFetch('/api/user-context', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_label: userLabel,
-              context_text: `\n--- Session ${dateStamp} ---\n${memoryText}`,
-              append: true,
-            }),
-          });
-        }
-      }
-    } catch (e) {
-      console.error('Memory extraction error:', e);
-    }
-
-    // Export to Claude if requested
-    if (sendToClaude) {
-      try {
-        const exportResp = await apiFetch('/api/export-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            summary: displayText,
-            messages: conversationHistory,
-            cost: sessionCost,
-            date: new Date().toISOString(),
-          }),
-        });
-        if (exportResp.ok) {
-          showToast('Session sent to Claude', 'success');
-        } else {
-          showToast('Failed to send to Claude', 'error');
-        }
-      } catch (e) {
-        showToast('Failed to send to Claude', 'error');
-      }
-    }
-
-  } catch (err) {
-    removeLastStatus();
-    showToast('Wrap up error', 'error');
-  }
-
-  isWaiting = false;
-  sendBtn.disabled = false;
-  wrapBtn.disabled = false;
-}
-
 // ---- UI HELPERS ----
 function addMessage(role, text) {
   const div = document.createElement('div');
@@ -1885,22 +1735,30 @@ function showRateLimit(msg) {
 }
 
 // ---- VOICE TOGGLE ----
-const voiceToggle = document.getElementById('voice-toggle');
-voiceToggle.addEventListener('click', () => {
-  voiceEnabled = !voiceEnabled;
-  voiceToggle.textContent = voiceEnabled ? 'Voices On' : 'Voices Off';
-  voiceToggle.style.borderColor = voiceEnabled ? 'var(--red)' : 'var(--border2)';
-  voiceToggle.style.color = voiceEnabled ? 'var(--red)' : 'var(--text-mid)';
-  if (!voiceEnabled) stopAudio();
+const voiceOffBtn = document.getElementById('voice-off-btn');
+const voiceOnBtn = document.getElementById('voice-on-btn');
+
+function updateVoiceToggle() {
+  voiceOnBtn.classList.toggle('active', voiceEnabled);
+  voiceOffBtn.classList.toggle('active', !voiceEnabled);
+}
+
+voiceOffBtn.addEventListener('click', () => {
+  voiceEnabled = false;
+  updateVoiceToggle();
+  stopAudio();
+});
+
+voiceOnBtn.addEventListener('click', () => {
+  voiceEnabled = true;
+  updateVoiceToggle();
 });
 
 // ---- VOICE CHOICE (first message) ----
 function handleVoiceChoice(listen) {
   hasChosenMode = true;
   voiceEnabled = listen;
-  voiceToggle.textContent = listen ? 'Voices On' : 'Voices Off';
-  voiceToggle.style.borderColor = listen ? 'var(--red)' : 'var(--border2)';
-  voiceToggle.style.color = listen ? 'var(--red)' : 'var(--text-mid)';
+  updateVoiceToggle();
   document.getElementById('voice-choice').classList.remove('active');
 
   if (pendingAgentBlocks) {
@@ -1913,8 +1771,8 @@ function handleVoiceChoice(listen) {
 document.getElementById('choice-read').addEventListener('click', () => handleVoiceChoice(false));
 document.getElementById('choice-listen').addEventListener('click', () => handleVoiceChoice(true));
 
-// ---- END SESSION / LOGOUT ----
-document.getElementById('end-session-btn').addEventListener('click', () => {
+// ---- END SESSION ----
+function doLogout() {
   stopAudio();
   if (timerInterval) clearInterval(timerInterval);
   sessionToken = null;
@@ -1931,8 +1789,225 @@ document.getElementById('end-session-btn').addEventListener('click', () => {
   chatArea.innerHTML = '';
   sessionCostEl.textContent = '$0.00';
   sessionTimerEl.textContent = '00:00';
+  document.getElementById('end-overlay').classList.remove('active');
+  document.getElementById('download-screen').classList.remove('active');
   showScreen('login-screen');
   document.getElementById('login-password').value = '';
+}
+
+function saveSessionStats() {
+  return apiFetch('/api/usage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      started_at: sessionStartedAt ? sessionStartedAt.toISOString() : new Date().toISOString(),
+      ended_at: new Date().toISOString(),
+      total_input_tokens: totalInputTokens,
+      total_output_tokens: totalOutputTokens,
+      total_cartesia_characters: totalCartesiaChars,
+      estimated_cost_usd: sessionCost,
+      summary_text: '',
+      messages_json: conversationHistory,
+      user_label: userLabel,
+    }),
+  }).catch(console.error);
+}
+
+document.getElementById('end-session-btn').addEventListener('click', () => {
+  stopAudio();
+  if (timerInterval) clearInterval(timerInterval);
+
+  // Show session stats in the overlay
+  const elapsed = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt.getTime()) / 1000) : 0;
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  document.getElementById('end-stats').textContent =
+    `${mins}m ${secs}s  |  $${sessionCost.toFixed(4)}  |  ${conversationHistory.filter(m => m.role === 'user').length} messages`;
+
+  // Save session stats immediately
+  saveSessionStats();
+
+  document.getElementById('end-overlay').classList.add('active');
+});
+
+// Log Out button
+document.getElementById('end-logout').addEventListener('click', doLogout);
+
+// Get Download button
+document.getElementById('end-download').addEventListener('click', async () => {
+  document.getElementById('end-overlay').classList.remove('active');
+  const dlScreen = document.getElementById('download-screen');
+  dlScreen.classList.add('active');
+
+  const statusEl = document.getElementById('download-status');
+  const dlBtn = document.getElementById('download-btn');
+  const countdownEl = document.getElementById('logout-countdown');
+  const logoutNowBtn = document.getElementById('logout-now-btn');
+
+  statusEl.textContent = 'Preparing summary...';
+  dlBtn.style.display = 'none';
+  countdownEl.style.display = 'none';
+  logoutNowBtn.style.display = 'none';
+
+  let summaryText = '';
+
+  // Generate AI summary
+  try {
+    const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this brainstorming session including:
+
+1. Executive Summary (3 to 5 bullet points of the most important outcomes)
+2. Key Insights and Decisions Made
+3. Open Questions That Need Answers
+4. Action Items (be specific and actionable)
+
+Session cost: $${sessionCost.toFixed(4)}
+Include the session cost in the summary.`;
+
+    const wrapMessages = [...conversationHistory, { role: 'user', content: wrapPrompt }];
+
+    const response = await apiFetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: wrapMessages, user_label: userLabel }),
+    });
+
+    if (response.ok) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value).split('\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === 'text') summaryText += data.content;
+            } catch (e) {}
+          }
+        }
+      }
+    }
+
+    // Strip task tags if present
+    summaryText = summaryText.replace(/<tasks>[\s\S]*?<\/tasks>/, '').trim();
+    // Strip agent tags
+    summaryText = summaryText.replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*/g, '').trim();
+
+    statusEl.textContent = 'Summary ready. Download below.';
+  } catch (e) {
+    summaryText = '(Summary generation failed)';
+    statusEl.textContent = 'Summary failed, but you can still download the conversation.';
+  }
+
+  // Extract and save memories (same as old wrap-up)
+  try {
+    const memoryPrompt = `Based on this conversation, extract the key facts worth remembering about this user for future sessions. Include:
+- Who they are, what they do
+- Projects or goals they mentioned
+- Preferences they expressed
+- Key decisions made
+- Important context for next time
+
+Format as a concise bullet list. Only include facts, not opinions. Keep it under 500 words.`;
+
+    const memResp = await apiFetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [...conversationHistory, { role: 'user', content: memoryPrompt }],
+        user_label: userLabel,
+      }),
+    });
+
+    if (memResp.ok) {
+      const memReader = memResp.body.getReader();
+      const memDecoder = new TextDecoder();
+      let memoryText = '';
+      while (true) {
+        const { done, value } = await memReader.read();
+        if (done) break;
+        for (const line of memDecoder.decode(value).split('\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const d = JSON.parse(line.slice(6));
+              if (d.type === 'text') memoryText += d.content;
+            } catch (e) {}
+          }
+        }
+      }
+
+      memoryText = memoryText.replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*/g, '').trim();
+
+      if (memoryText) {
+        const dateStamp = new Date().toLocaleDateString();
+        await apiFetch('/api/user-context', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_label: userLabel,
+            context_text: `\n--- Session ${dateStamp} ---\n${memoryText}`,
+            append: true,
+          }),
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Memory extraction error:', e);
+  }
+
+  // Show download button
+  dlBtn.style.display = 'block';
+
+  const savedUserLabel = userLabel;
+  const savedConversation = [...conversationHistory];
+
+  dlBtn.addEventListener('click', () => {
+    const lines = [
+      `# Brainstorm Session\n`,
+      `**Date:** ${new Date().toLocaleDateString()}\n`,
+      `---\n`,
+      `## Summary\n`,
+      summaryText,
+      `\n---\n`,
+      `## Full Conversation\n`,
+    ];
+    for (const msg of savedConversation) {
+      if (msg.role === 'user') {
+        lines.push(`### You\n${msg.content}\n`);
+      } else {
+        lines.push(`### Team\n${msg.content}\n`);
+      }
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brainstorm-${new Date().toISOString().slice(0,10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Start 60-second countdown
+    dlBtn.style.display = 'none';
+    statusEl.textContent = 'Downloaded.';
+    countdownEl.style.display = 'block';
+    logoutNowBtn.style.display = 'block';
+
+    let remaining = 60;
+    countdownEl.textContent = `Logging out in ${remaining}s`;
+    const countdownTimer = setInterval(() => {
+      remaining--;
+      countdownEl.textContent = `Logging out in ${remaining}s`;
+      if (remaining <= 0) {
+        clearInterval(countdownTimer);
+        doLogout();
+      }
+    }, 1000);
+
+    logoutNowBtn.addEventListener('click', () => {
+      clearInterval(countdownTimer);
+      doLogout();
+    });
+  }, { once: true });
 });
 </script>
 </body>
