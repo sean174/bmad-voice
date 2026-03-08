@@ -1403,6 +1403,7 @@ document.getElementById('pw-eye').addEventListener('click', () => {
 
 // Check if already logged in
 if (sessionToken) {
+  if (userRole !== 'admin') document.getElementById('session-cost').style.display = 'none';
   updateStartScreen();
   showScreen('start-screen');
 }
@@ -1435,6 +1436,7 @@ document.getElementById('login-form').addEventListener('submit', async () => {
       localStorage.setItem('bmad_token', data.token);
       localStorage.setItem('bmad_role', userRole);
       localStorage.setItem('bmad_label', userLabel);
+      if (userRole !== 'admin') document.getElementById('session-cost').style.display = 'none';
       updateStartScreen();
       showScreen('start-screen');
     } else {
@@ -2493,8 +2495,10 @@ document.getElementById('end-session-btn').addEventListener('click', () => {
   const elapsed = sessionStartedAt ? Math.floor((Date.now() - sessionStartedAt.getTime()) / 1000) : 0;
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
-  document.getElementById('end-stats').textContent =
-    `${mins}m ${secs}s  |  $${sessionCost.toFixed(4)}  |  ${conversationHistory.filter(m => m.role === 'user').length} messages`;
+  const msgCount = conversationHistory.filter(m => m.role === 'user').length;
+  document.getElementById('end-stats').textContent = userRole === 'admin'
+    ? `${mins}m ${secs}s  |  $${sessionCost.toFixed(4)}  |  ${msgCount} messages`
+    : `${mins}m ${secs}s  |  ${msgCount} messages`;
 
   // Save session stats immediately
   saveSessionStats();
