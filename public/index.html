@@ -1503,7 +1503,7 @@ document.getElementById('login-form').addEventListener('submit', async () => {
       updateStartScreen();
       showScreen('start-screen');
     } else {
-      errEl.textContent = data.error || 'Wrong password';
+      errEl.textContent = data.error || 'Invalid invite code';
     }
   } catch (e) {
     errEl.textContent = 'Connection error: ' + e.message;
