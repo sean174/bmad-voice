@@ -36,6 +36,7 @@ from datetime import datetime
 
 url = '${API_URL}?secret=${SECRET}&date=${LAST_PULL}&user=sean'
 req = urllib.request.Request(url)
+req.add_header('x-session-token', '${SECRET}')
 try:
     resp = urllib.request.urlopen(req)
     data = json.loads(resp.read())

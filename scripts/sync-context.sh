@@ -71,6 +71,7 @@ ESCAPED=$(echo "$CONTEXT" | python3 -c 'import sys,json; print(json.dumps(sys.st
 
 RESPONSE=$(curl -s -X POST "$API_URL" \
   -H "Content-Type: application/json" \
+  -H "x-session-token: $SECRET" \
   -d "{\"context\": $ESCAPED, \"secret\": \"$SECRET\"}")
 
 echo "$(date): Synced $(echo "$CONTEXT" | wc -c | tr -d ' ') chars. Response: $RESPONSE"
