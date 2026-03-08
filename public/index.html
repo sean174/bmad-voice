@@ -1871,17 +1871,17 @@ async function _streamResponse() {
     await new Promise(r => setTimeout(r, 400));
     removeThinking();
 
-    console.log('[VOICE DEBUG] hasChosenMode:', hasChosenMode, 'voiceEnabled:', voiceEnabled, 'blocks:', agentBlocks.length);
+    showToast(`mode:${hasChosenMode} voice:${voiceEnabled} blocks:${agentBlocks.length}`, 'info');
     if (!hasChosenMode) {
       pendingAgentBlocks = agentBlocks;
       document.getElementById('voice-choice').classList.add('active');
     } else {
       displayAgentBlocks(agentBlocks);
       if (voiceEnabled) {
-        console.log('[VOICE DEBUG] Calling playAgentAudio');
+        showToast('Playing audio...', 'info');
         playAgentAudio(agentBlocks);
       } else {
-        console.log('[VOICE DEBUG] voiceEnabled is FALSE, skipping audio');
+        showToast('Voice OFF, skipping audio', 'error');
       }
     }
 
