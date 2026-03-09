@@ -2,8 +2,9 @@
 # Syncs local Claude memory files to BMAD Voice admin context
 # Run daily via cron: 0 6 * * * /Users/seanthomas/bmad-voice/scripts/sync-context.sh
 
-MEMORY_DIR="/Users/seanthomas/.claude/projects/-Users-seanthomas/memory"
-CLAUDE_MD="/Users/seanthomas/.claude/CLAUDE.md"
+ICLOUD_BASE="$HOME/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode"
+MEMORY_DIR="$ICLOUD_BASE/memory"
+CLAUDE_MD="$ICLOUD_BASE/CLAUDE.md"
 API_URL="https://bmad-voice.vercel.app/api/context"
 
 # Read the session secret from .env.local
@@ -22,6 +23,13 @@ fi
 
 # Build context from memory files
 CONTEXT=""
+
+# Add top-of-mind priorities first (agents see this immediately)
+if [ -f "$MEMORY_DIR/top-of-mind.md" ]; then
+  CONTEXT+="$(cat "$MEMORY_DIR/top-of-mind.md")
+
+"
+fi
 
 # Add key sections from CLAUDE.md (skip credentials and file paths)
 if [ -f "$CLAUDE_MD" ]; then

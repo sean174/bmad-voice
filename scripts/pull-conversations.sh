@@ -3,6 +3,7 @@
 # Run via cron alongside sync-context.sh
 
 ICLOUD_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/ClaudeCode/bmad-voice-sessions"
+STAGING_DIR="/tmp/bmad-pull-staging"
 API_URL="https://bmad-voice.vercel.app/api/conversation-log"
 LAST_PULL_FILE="$HOME/.bmad-last-pull"
 
@@ -21,6 +22,7 @@ if [ -z "$SECRET" ]; then
 fi
 
 mkdir -p "$ICLOUD_DIR"
+mkdir -p "$STAGING_DIR"
 
 # Get last pull timestamp, default to 24 hours ago
 if [ -f "$LAST_PULL_FILE" ]; then
@@ -58,13 +60,23 @@ for msg in messages:
     sessions[sid].append(msg)
 
 icloud = '$ICLOUD_DIR'
+staging = '$STAGING_DIR'
 today = datetime.now().strftime('%Y-%m-%d')
 filename = f'brainstorm-conversations-{today}.md'
-filepath = os.path.join(icloud, filename)
+icloud_path = os.path.join(icloud, filename)
+staging_path = os.path.join(staging, filename)
 
-# Append to today's file (don't overwrite, there may be multiple pulls)
-mode = 'a' if os.path.exists(filepath) else 'w'
-with open(filepath, mode) as f:
+# If iCloud file exists, copy to staging first so we can append
+if os.path.exists(icloud_path) and not os.path.exists(staging_path):
+    import shutil
+    try:
+        shutil.copy2(icloud_path, staging_path)
+    except Exception:
+        pass  # If copy fails, we'll create fresh
+
+# Write to staging dir (cron always has permission here)
+mode = 'a' if os.path.exists(staging_path) else 'w'
+with open(staging_path, mode) as f:
     if mode == 'w':
         f.write(f'# Brainstorm Conversations - {today}\n\n')
         f.write('These are conversations from the Brainstorm app. Review and integrate key insights into memory.\n\n')
@@ -76,7 +88,14 @@ with open(filepath, mode) as f:
             f.write(f'**You:** {msg[\"user_message\"]}\n\n')
             f.write(f'**Team:** {msg[\"assistant_message\"]}\n\n')
 
-print(f'Saved {len(messages)} message(s) across {len(sessions)} session(s) to {filename}')
+# Copy staging file to iCloud (overwrite with full content)
+import shutil
+try:
+    shutil.copy2(staging_path, icloud_path)
+    print(f'Saved {len(messages)} message(s) across {len(sessions)} session(s) to {filename}')
+except Exception as e:
+    print(f'Saved to staging but iCloud copy failed: {e}')
+    print(f'Staging file at: {staging_path}')
 "
 
 # Update last pull timestamp

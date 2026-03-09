@@ -23,6 +23,7 @@ function cleanTextForSpeech(text) {
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // markdown links -> text
     .replace(/[_#>\-|]/g, '')       // markdown formatting
     .replace(/\bAHA\b/g, 'ah-ha')  // pronounce as word not letters
+    .replace(/\b([A-Z]{2,})\b/g, (m) => m.charAt(0) + m.slice(1).toLowerCase()) // ALL CAPS words -> Title case so TTS reads as words
     .replace(/\n{2,}/g, '. ')       // double newlines to pause
     .replace(/\n/g, ' ')            // single newlines to space
     .replace(/\s{2,}/g, ' ')        // collapse whitespace
