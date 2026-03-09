@@ -158,6 +158,49 @@ async function getRecentConversations(userLabel) {
   }
 }
 
+async function getMatchingDocuments(userMessage, conversationMessages) {
+  if (!process.env.POSTGRES_URL || !userMessage) return [];
+  const { Pool } = require('@neondatabase/serverless');
+  const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+  try {
+    // Check which document slugs have already been injected in this session
+    // by scanning conversation history for the injection marker
+    const alreadyInjected = new Set();
+    for (const msg of conversationMessages) {
+      if (msg.role === 'user' && msg.content && msg.content.includes('[DOC_INJECTED:')) {
+        const matches = msg.content.match(/\[DOC_INJECTED:([^\]]+)\]/g);
+        if (matches) {
+          for (const m of matches) {
+            alreadyInjected.add(m.replace('[DOC_INJECTED:', '').replace(']', ''));
+          }
+        }
+      }
+    }
+
+    // Get all documents with their keywords
+    const result = await pool.query('SELECT slug, title, keywords, content FROM documents');
+    if (result.rows.length === 0) return [];
+
+    const messageLower = userMessage.toLowerCase();
+    const matched = [];
+
+    for (const doc of result.rows) {
+      if (alreadyInjected.has(doc.slug)) continue;
+      const keywordHit = doc.keywords.some(kw => messageLower.includes(kw.toLowerCase()));
+      if (keywordHit) {
+        matched.push(doc);
+      }
+    }
+
+    return matched;
+  } catch (e) {
+    console.error('Document matching error:', e);
+    return [];
+  } finally {
+    await pool.end();
+  }
+}
+
 async function getUserContext(userLabel) {
   if (!process.env.POSTGRES_URL || !userLabel) return { context: '', isNew: false };
   const { Pool } = require('@neondatabase/serverless');
@@ -393,6 +436,24 @@ The user's first message will likely be a greeting since they chose to do the in
       if (recentConvos) {
         systemPrompt += '\n\n--- RECENT BRAINSTORM CONVERSATIONS (last 24 hours) ---\nThe user had these earlier conversations with the team today. Reference them naturally if relevant, but don\'t recite them back unless asked.\n' + recentConvos;
       }
+    }
+  }
+
+  // Document injection: check if the latest user message triggers any document keywords
+  const latestUserMsg = messages[messages.length - 1];
+  if (latestUserMsg && latestUserMsg.role === 'user' && latestUserMsg.content) {
+    const matchedDocs = await getMatchingDocuments(latestUserMsg.content, messages);
+    if (matchedDocs.length > 0) {
+      for (const doc of matchedDocs) {
+        systemPrompt += `\n\n--- REFERENCE DOCUMENT: ${doc.title} ---\nThe user's message matched keywords for this document. Use this content to inform your response. Reference specific details, examples, and numbers from the document when relevant. Do not dump the whole document back at them, but weave the knowledge into your answers naturally.\n\n${doc.content}`;
+      }
+      // Add injection markers to the user message so we don't re-inject next turn
+      // We append hidden markers that won't affect the conversation
+      const markers = matchedDocs.map(d => `[DOC_INJECTED:${d.slug}]`).join('');
+      managedMessages[managedMessages.length - 1] = {
+        ...managedMessages[managedMessages.length - 1],
+        content: managedMessages[managedMessages.length - 1].content + '\n' + markers,
+      };
     }
   }
 
