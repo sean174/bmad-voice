@@ -1371,7 +1371,7 @@ let totalCartesiaChars = 0;
 let isPlaying = false;
 let voiceEnabled = false;
 let hasChosenMode = false;
-const VOICE_ENABLED_USERS = ['tyler', 'kate'];
+const VOICE_ENABLED_USERS = null; // voice enabled for all users
 let pendingAgentBlocks = null;
 let audioQueue = [];
 let currentAudio = null;
@@ -1731,7 +1731,7 @@ function startTour(callback) {
 
 function showTourStep() {
   // Skip voice-only tour steps for non-voice users
-  if (TOUR_STEPS[tourStep].voiceOnly && !VOICE_ENABLED_USERS.includes(userLabel)) {
+  if (TOUR_STEPS[tourStep].voiceOnly && false) { // voice enabled for all
     tourStep++;
     if (tourStep >= TOUR_STEPS.length) return;
     return showTourStep();
@@ -1810,12 +1810,7 @@ document.getElementById('start-btn').addEventListener('click', async () => {
   sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   startTimer();
 
-  // Only voice-enabled users get the toggle and voice choice
-  if (!VOICE_ENABLED_USERS.includes(userLabel)) {
-    hasChosenMode = true;
-    voiceEnabled = false;
-    document.querySelector('.voice-toggle-pill').style.display = 'none';
-  }
+  // Voice enabled for all users - they choose via Read/Listen overlay
 
   // Unlock iOS audio - play a silent sound to enable future programmatic playback
   try {
