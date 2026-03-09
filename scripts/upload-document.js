@@ -48,7 +48,10 @@ async function main() {
 
   const response = await fetch(`${API_BASE}/api/documents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-session-token': secret,
+    },
     body: JSON.stringify({ slug, title, keywords, content, secret }),
   });
 
