@@ -24,9 +24,9 @@ fi
 # Build context from memory files
 CONTEXT=""
 
-# Add top-of-mind priorities first (agents see this immediately)
-if [ -f "$MEMORY_DIR/top-of-mind.md" ]; then
-  CONTEXT+="$(cat "$MEMORY_DIR/top-of-mind.md")
+# Add current sprints first (agents see this immediately)
+if [ -f "$MEMORY_DIR/current-sprints.md" ]; then
+  CONTEXT+="$(cat "$MEMORY_DIR/current-sprints.md")
 
 "
 fi
