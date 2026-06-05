@@ -706,6 +706,29 @@
       flex: 1;
     }
 
+    #idea-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 20px 14px;
+    }
+
+    #save-idea-btn {
+      padding: 8px 12px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    #idea-status {
+      min-height: 14px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
     /* Mic button */
     #mic-btn {
       width: 48px;
@@ -1290,6 +1313,10 @@
       <button id="mic-btn" aria-label="Voice input" style="display:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="11" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
       <button id="send-btn" class="btn-primary">Send</button>
     </div>
+    <div id="idea-row">
+      <button id="save-idea-btn" class="btn-secondary">Save Idea</button>
+      <div id="idea-status" aria-live="polite"></div>
+    </div>
     <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
       <button id="stop-btn">Stop Audio</button>
     </div>
@@ -1361,6 +1388,8 @@ const chatScreen = document.getElementById('chat-screen');
 const chatArea = document.getElementById('chat-area');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
+const saveIdeaBtn = document.getElementById('save-idea-btn');
+const ideaStatus = document.getElementById('idea-status');
 const stopBtn = document.getElementById('stop-btn');
 const stopBar = document.getElementById('stop-bar');
 const sessionCostEl = document.getElementById('session-cost');
@@ -1745,6 +1774,64 @@ function apiFetch(url, options = {}) {
   const headers = { ...options.headers, 'x-session-token': sessionToken };
   return fetch(url, { ...options, headers });
 }
+
+function setIdeaStatus(text) {
+  ideaStatus.textContent = text;
+}
+
+function getIdeaTextToSave() {
+  const start = messageInput.selectionStart;
+  const end = messageInput.selectionEnd;
+  if (typeof start === 'number' && typeof end === 'number' && end > start) {
+    return messageInput.value.slice(start, end).trim();
+  }
+
+  const lastUserMessage = [...conversationHistory].reverse().find(m => m.role === 'user');
+  return lastUserMessage ? lastUserMessage.content.trim() : '';
+}
+
+saveIdeaBtn.addEventListener('click', async () => {
+  const text = getIdeaTextToSave();
+  if (!text) {
+    setIdeaStatus('Select or send an idea first.');
+    return;
+  }
+
+  saveIdeaBtn.disabled = true;
+  setIdeaStatus('Saving...');
+
+  try {
+    const response = await apiFetch('/api/ideas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        session_id: sessionId,
+        tags: ['phase-0'],
+        meta: {
+          user_label: userLabel,
+          saved_at: new Date().toISOString(),
+        },
+      }),
+    });
+
+    if (response.status === 503) {
+      setIdeaStatus('Ideas bridge is not connected yet.');
+      return;
+    }
+
+    if (!response.ok) {
+      setIdeaStatus('Could not save idea.');
+      return;
+    }
+
+    setIdeaStatus('Saved to ideas.');
+  } catch (e) {
+    setIdeaStatus('Could not save idea.');
+  } finally {
+    saveIdeaBtn.disabled = false;
+  }
+});
 
 // ---- SEND MESSAGE ----
 sendBtn.addEventListener('click', sendMessage);

@@ -38,6 +38,184 @@ async function getAdminContext() {
   }
 }
 
+function redactSecrets(value) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') {
+    return value
+      .replace(/\b[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\b/g, '[redacted]')
+      .replace(/\b(?:sk|pk|rk|pat|ghp|gho|xox[baprs])-?[A-Za-z0-9_=-]{16,}\b/gi, '[redacted]')
+      .replace(/\b[A-Za-z0-9+/]{40,}={0,2}\b/g, '[redacted]');
+  }
+  if (Array.isArray(value)) return value.map(redactSecrets);
+  if (typeof value === 'object') {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (/secret|token|password|api[_-]?key|authorization|credential/i.test(key)) {
+        out[key] = '[redacted]';
+      } else {
+        out[key] = redactSecrets(item);
+      }
+    }
+    return out;
+  }
+  return value;
+}
+
+function asArray(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function pickFirstObject(root, keys) {
+  if (!root || typeof root !== 'object') return null;
+  for (const key of keys) {
+    const value = root[key];
+    if (value && typeof value === 'object') return value;
+  }
+  return null;
+}
+
+function pickFirstArray(root, keys) {
+  if (!root || typeof root !== 'object') return [];
+  for (const key of keys) {
+    const value = root[key];
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+function compactItem(item, fields) {
+  if (item === null || item === undefined) return '';
+  if (typeof item !== 'object') return String(item);
+
+  const parts = [];
+  for (const field of fields) {
+    const value = item[field];
+    if (value !== null && value !== undefined && value !== '') {
+      parts.push(`${field}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
+    }
+  }
+
+  if (parts.length > 0) return parts.join(' | ');
+
+  const fallback = {};
+  for (const [key, value] of Object.entries(item).slice(0, 6)) {
+    if (value !== null && value !== undefined && value !== '') fallback[key] = value;
+  }
+  return JSON.stringify(fallback);
+}
+
+function appendList(lines, title, items, fields, limit = 12) {
+  lines.push(`${title}:`);
+  const list = asArray(items).slice(0, limit);
+  if (list.length === 0) {
+    lines.push('- none provided');
+    return;
+  }
+  for (const item of list) {
+    const text = compactItem(item, fields);
+    if (text) lines.push(`- ${text}`);
+  }
+}
+
+function getNested(root, path) {
+  return path.split('.').reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), root);
+}
+
+function formatCommandCenterContext(raw) {
+  const context = redactSecrets(raw);
+  const data = context && typeof context === 'object' && context.data && typeof context.data === 'object'
+    ? context.data
+    : context;
+  if (!data || typeof data !== 'object') return '';
+
+  const docs = pickFirstArray(data, ['business_context_docs', 'business_context_documents', 'context_docs', 'docs']);
+  const kpis = pickFirstObject(data, ['kpi_headlines', 'kpi_headline_keys', 'kpis', 'metrics']);
+
+  const lines = [
+    '--- LIVE COMMAND CENTER CONTEXT (read-only) ---',
+    `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
+    `scope: ${data.scope || data.context_scope || 'unknown'}`,
+  ];
+
+  appendList(lines, 'sources', pickFirstArray(data, ['sources', 'source_list']), ['name', 'title', 'updated_at', 'updatedAt', 'timestamp', 'generated_at']);
+  appendList(lines, 'top_projects', pickFirstArray(data, ['top_projects', 'projects', 'priority_projects']), ['name', 'title', 'status', 'owner', 'updated_at', 'summary']);
+  appendList(lines, 'active_operations', pickFirstArray(data, ['active_operations', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step']);
+  appendList(lines, 'blockers', pickFirstArray(data, ['blockers', 'risks', 'stuck_items']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on']);
+  appendList(lines, 'pending_decisions', pickFirstArray(data, ['pending_decisions', 'decisions', 'open_decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question']);
+  appendList(lines, 'recent_ideas', pickFirstArray(data, ['recent_ideas', 'ideas']), ['name', 'title', 'text', 'summary', 'created_at', 'source']);
+
+  lines.push('kpi_headline_keys:');
+  if (kpis && typeof kpis === 'object' && Object.keys(kpis).length > 0) {
+    for (const [key, value] of Object.entries(kpis).slice(0, 20)) {
+      lines.push(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
+    }
+  } else {
+    lines.push('- none provided');
+  }
+
+  lines.push('business_context_docs_excerpts:');
+  if (docs.length === 0) {
+    lines.push('- none provided');
+  } else {
+    for (const doc of docs.slice(0, 12)) {
+      const title = doc.title || doc.name || doc.slug || 'document';
+      const updated = doc.updated_at || doc.updatedAt || doc.timestamp || '';
+      const excerpt = doc.excerpt || doc.summary || doc.content || doc.text || '';
+      lines.push(`- ${title}${updated ? ` | ${updated}` : ''}: ${String(excerpt).slice(0, 1500)}`);
+    }
+  }
+
+  const fallbackPaths = [
+    'summary',
+    'business_context',
+    'command_center_summary',
+  ];
+  for (const path of fallbackPaths) {
+    const value = getNested(data, path);
+    if (value && typeof value !== 'object') lines.push(`${path}: ${String(value).slice(0, 3000)}`);
+  }
+
+  return lines.join('\n').slice(0, 40000);
+}
+
+async function getCommandCenterContext() {
+  const url = process.env.COMMAND_CENTER_CONTEXT_URL || '';
+  const token = process.env.MASTERMIND_BRIDGE_TOKEN || '';
+  if (!url || !token) return '';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      console.warn('Command Center context unavailable');
+      return '';
+    }
+
+    const json = await response.json().catch(() => null);
+    if (!json) {
+      console.warn('Command Center context parse failed');
+      return '';
+    }
+
+    return formatCommandCenterContext(json);
+  } catch (e) {
+    console.warn('Command Center context fetch failed');
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function getRecentConversations(userLabel) {
   if (!process.env.POSTGRES_URL || !userLabel) return '';
   const { Pool } = require('@neondatabase/serverless');
@@ -275,6 +453,11 @@ export default async function handler(req, res) {
 
   // Load business context and recent conversations for admin users
   if (isAdminUser(user_label)) {
+    const commandCenterContext = await getCommandCenterContext();
+    if (commandCenterContext) {
+      systemPrompt += '\n\n' + commandCenterContext;
+    }
+
     const context = await getAdminContext();
     if (context) {
       systemPrompt += '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
