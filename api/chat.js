@@ -15,9 +15,10 @@ Response style:
 
 Read-only testing safety:
 - You are read-only during testing.
-- You may suggest actions, draft notes, capture ideas in the conversation, and help Sean decide what to do next.
+- You may suggest actions, draft notes, capture ideas only through the Ideas capture path, and help Sean decide what to do next.
 - You cannot create tasks, update Asana, write to business systems, send messages, change files, or claim that you made any external change.
 - If Sean asks you to take an external action, say that you can draft or park the idea here, but execution is disabled during read-only testing.
+- If Sean asks you to save or capture an idea and the request reaches you, do not claim you tried an endpoint, do not claim it timed out, and do not say you saved it. Say exactly: "Use the Save Idea button or start the message with Save this idea..."
 
 Context:
 - Use provided user context, admin business context, recent conversation history, and matched reference documents when available.
@@ -442,6 +443,69 @@ Existing Mastermind instructions and context:
 ${systemPrompt}`;
 }
 
+function normalizeIdeaText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function truncateIdeaText(text, limit = 90) {
+  const cleaned = normalizeIdeaText(text);
+  return cleaned.length > limit ? `${cleaned.slice(0, limit - 3)}...` : cleaned;
+}
+
+function getIdeaCommandText(text) {
+  if (typeof text !== 'string') return '';
+
+  const commandPattern = [
+    'save\\s+this\\s+as\\s+an\\s+idea',
+    'save\\s+as\\s+idea',
+    'save\\s+this\\s+idea',
+    'capture\\s+this\\s+idea',
+    'add\\s+this\\s+to\\s+ideas',
+    'add\\s+to\\s+ideas',
+    'put\\s+this\\s+in\\s+ideas',
+    'park\\s+this\\s+idea',
+    'note\\s+this\\s+idea',
+  ].join('|');
+  const politePrefix = '(?:(?:please|hey|ok|okay)\\s+)*(?:(?:can|could|will)\\s+you\\s+)?(?:please\\s+)?';
+  const separator = '(?:\\s*[:.,\\-–—]\\s*|\\s+)';
+  const match = text.match(new RegExp(`^\\s*${politePrefix}(?:${commandPattern})${separator}([\\s\\S]+)$`, 'i'));
+  if (!match) return '';
+
+  const ideaText = normalizeIdeaText(match[1]);
+  return ideaText.replace(/\s/g, '').length >= 3 ? ideaText : '';
+}
+
+async function saveIdeaToCommandCenter(ideaText, reqBody = {}) {
+  const ideasUrl = process.env.COMMAND_CENTER_IDEAS_URL || '';
+  const bridgeToken = process.env.MASTERMIND_BRIDGE_TOKEN || '';
+  if (!ideasUrl || !bridgeToken) {
+    throw new Error('Ideas bridge not configured');
+  }
+
+  const response = await fetch(ideasUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${bridgeToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      text: ideaText,
+      source: 'mastermind-vercel',
+      session_id: reqBody.session_id || null,
+      tags: [],
+      meta: {
+        via: 'api-chat-intercept',
+        user_label: reqBody.user_label || null,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ideas bridge returned ${response.status}`);
+  }
+}
+
 function writeSseHeaders(res) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -628,11 +692,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const rateLimitCheck = await checkRateLimits();
-  if (!rateLimitCheck.allowed) {
-    return res.status(429).json({ error: rateLimitCheck.reason });
-  }
-
   const { messages, user_label } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Messages array required' });
@@ -641,6 +700,29 @@ export default async function handler(req, res) {
   const lastMessage = messages[messages.length - 1];
   if (lastMessage && lastMessage.content && lastMessage.content.length > 2000) {
     return res.status(400).json({ error: 'Message too long. Keep it under 2,000 characters.' });
+  }
+
+  const latestIdeaText = lastMessage && lastMessage.role === 'user'
+    ? getIdeaCommandText(lastMessage.content)
+    : '';
+  if (latestIdeaText) {
+    writeSseHeaders(res);
+
+    try {
+      await saveIdeaToCommandCenter(latestIdeaText, req.body || {});
+      writeTextChunk(res, `Saved to Ideas: ${truncateIdeaText(latestIdeaText)}`);
+    } catch (e) {
+      console.warn('Chat idea capture failed', { reason: e.message });
+      writeTextChunk(res, 'I could not save that idea. Try the Save Idea button or retry in a moment.');
+    }
+
+    writeDoneChunk(res, 0, 0, 0);
+    return res.end();
+  }
+
+  const rateLimitCheck = await checkRateLimits();
+  if (!rateLimitCheck.allowed) {
+    return res.status(429).json({ error: rateLimitCheck.reason });
   }
 
   const managedMessages = summarizeOlderMessages(messages);
