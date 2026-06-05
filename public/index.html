@@ -1175,7 +1175,7 @@
   <div class="login-fade" data-fade="0"><img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;"></div>
   <div class="login-fade" data-fade="1"><span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span></div>
   <div class="login-fade" data-fade="2"><h1 class="headline" style="margin-bottom:4px;">Welcome back.</h1></div>
-  <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Your advisory team is ready.</p></div>
+  <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Command Center is ready.</p></div>
   <div class="login-fade" data-fade="4" style="margin-top:24px;"><span class="section-label" style="font-size:18px; letter-spacing:6px; color:var(--red);">Invitation Only</span></div>
   <div class="login-fade" data-fade="5" style="margin-top:16px;">
     <!-- Login form -->
@@ -1209,7 +1209,7 @@
 <div id="start-screen" class="screen">
   <span class="section-label">Mastermind</span>
   <h1 class="headline">Ready when<br>you are.</h1>
-  <p class="subtext" id="last-session-text">Start a mastermind session with your team.</p>
+  <p class="subtext" id="last-session-text">Start a read-only Command Center session.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
   <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
 </div>
@@ -1266,7 +1266,7 @@
   </div>
 
   <div id="voice-choice">
-    <h2>The team is ready.</h2>
+    <h2>Mastermind is ready.</h2>
     <div class="choice-buttons">
       <button class="choice-btn" id="choice-read">
         <span class="choice-icon">&#9776;</span>
@@ -1314,47 +1314,19 @@
 
 // ---- CONFIG ----
 const AGENT_COLORS = {
-  ANALYST: '#4A9EFF',
-  PM: '#FF6B6B',
-  ARCHITECT: '#51CF66',
-  DEVELOPER: '#FF922B',
-  STRATEGIST: '#BE4BDB',
-  PROBLEM_SOLVER: '#20C997',
-  BRAINSTORM_COACH: '#FCC419',
-  STORYTELLER: '#F06595',
+  MASTERMIND: '#e8332a',
 };
 
 const AGENT_DISPLAY = {
-  ANALYST: 'Mary',
-  PM: 'John',
-  ARCHITECT: 'Winston',
-  DEVELOPER: 'Amelia',
-  STRATEGIST: 'Victor',
-  PROBLEM_SOLVER: 'Emily',
-  BRAINSTORM_COACH: 'Carson',
-  STORYTELLER: 'Sophia',
+  MASTERMIND: 'Mastermind',
 };
 
 const AGENT_ROLES = {
-  ANALYST: 'Analyst',
-  PM: 'Product Manager',
-  ARCHITECT: 'Architect',
-  DEVELOPER: 'Developer',
-  STRATEGIST: 'Strategist',
-  PROBLEM_SOLVER: 'Problem Solver',
-  BRAINSTORM_COACH: 'Brainstorm Coach',
-  STORYTELLER: 'Storyteller',
+  MASTERMIND: 'Command Center',
 };
 
 const AGENT_AVATARS = {
-  ANALYST: '/avatars/mary.png',
-  PM: '/avatars/john.png',
-  ARCHITECT: '/avatars/winston.png',
-  DEVELOPER: '/avatars/amelia.png',
-  STRATEGIST: '/avatars/victor.png',
-  PROBLEM_SOLVER: '/avatars/quinn.png',
-  BRAINSTORM_COACH: '/avatars/carson.png',
-  STORYTELLER: '/avatars/sophia.png',
+  MASTERMIND: '/icons/icon-192.png',
 };
 
 // ---- STATE ----
@@ -1513,108 +1485,48 @@ document.getElementById('login-form').addEventListener('submit', async () => {
   loginBtn.textContent = 'Sign In';
 });
 
-// ---- TEAM INTROS (hardcoded, no API call) ----
-const TEAM_INTROS = {
-  STRATEGIST: "I'm Victor. I think about where your business is headed and how to get there faster. I'll ask the uncomfortable questions.",
-  ANALYST: "Mary here. I dig into the data and challenge assumptions. If something doesn't add up, I'll find it.",
-  PM: "I'm John. I keep things focused on what actually ships and what moves the needle. No fluff.",
-  ARCHITECT: "Winston. I think in systems. How things connect, where they break, and how to build them right.",
-  DEVELOPER: "Amelia. I'll tell you what's realistic to build, how long it'll take, and where to cut scope.",
-  PROBLEM_SOLVER: "I'm Emily. When something's stuck, I hunt the root cause. I get a little excited when I crack it.",
-  BRAINSTORM_COACH: "Carson here! I keep the ideas flowing and make sure we explore the wild ones too.",
-  STORYTELLER: "I'm Sophia. I help shape the narrative, the pitch, the message that makes people care.",
-};
-
-function showTeamIntros() {
+// ---- MASTERMIND INTRO (hardcoded, no API call) ----
+function showMastermindIntro() {
   const card = document.createElement('div');
   card.className = 'prompt-card';
 
   card.innerHTML = `
-    <div class="prompt-headline">Meet Your New Advisory Board.</div>
-    <div class="prompt-body">Eight advisors, each with a different lens on your business. They challenge each other, push back, and build on ideas together.</div>
-    <div class="prompt-body">We remember everything. Anything we talk about today is saved, so you can pick up where you left off next time. When we're done, download your session summary and drop it into your own Claude to keep rolling.</div>
+    <div class="prompt-headline">Mastermind is online.</div>
+    <div class="prompt-body">One fast strategic voice for Command Center. Read-only testing is active, so I can advise, draft, and park ideas here, but I will not change business systems.</div>
+    <div class="prompt-body">Session transcripts can be saved and downloaded so you can keep the context moving.</div>
   `;
-
-  const order = ['STRATEGIST', 'ANALYST', 'PM', 'ARCHITECT', 'DEVELOPER', 'PROBLEM_SOLVER', 'BRAINSTORM_COACH', 'STORYTELLER'];
-  for (const key of order) {
-    const div = document.createElement('div');
-    div.className = 'team-intro';
-    div.style.border = 'none';
-    div.style.background = 'transparent';
-    div.style.padding = '6px 0';
-    const avatar = document.createElement('div');
-    avatar.className = 'intro-avatar';
-    const img = document.createElement('img');
-    img.src = AGENT_AVATARS[key];
-    img.alt = AGENT_DISPLAY[key];
-    avatar.appendChild(img);
-    const content = document.createElement('div');
-    content.className = 'intro-content';
-    const name = document.createElement('div');
-    name.className = 'intro-name';
-    name.style.color = AGENT_COLORS[key];
-    name.textContent = AGENT_DISPLAY[key];
-    const text = document.createElement('div');
-    text.className = 'intro-text';
-    text.textContent = TEAM_INTROS[key];
-    content.appendChild(name);
-    content.appendChild(text);
-    div.appendChild(avatar);
-    div.appendChild(content);
-    card.appendChild(div);
-  }
 
   chatArea.appendChild(card);
   scrollToBottom();
 }
 
-function showSuggestedPrompts(showInterview) {
+function showSuggestedPrompts() {
   const card = document.createElement('div');
   card.className = 'prompt-card';
   card.id = 'prompt-card';
 
   card.innerHTML = `
-    <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use us:</div>
+    <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use Mastermind:</div>
     <ul class="prompt-uses">
       <li>Think through your business strategy and positioning</li>
       <li>Find where AI tools would give you the most leverage</li>
-      <li>Build custom apps that solve problems only you have</li>
+      <li>Shape custom app ideas before you build</li>
       <li>Get your systems talking to each other</li>
       <li>Analyze data and spot patterns you're missing</li>
+      <li>Park ideas in this conversation for later review</li>
     </ul>
   `;
-
-  if (showInterview) {
-    const recDiv = document.createElement('div');
-    recDiv.innerHTML = `
-      <div class="prompt-body" style="font-weight:700; color:var(--text);">We suggest starting with a deep dive on your business so we can get the whole picture before we start.</div>
-      <div class="prompt-body">We have a 30-40 minute interview so the team can learn your business inside and out. You can start now and come back later if you don't finish, or knock it out in one session.</div>
-    `;
-    card.appendChild(recDiv);
-
-    const interviewBtn = document.createElement('button');
-    interviewBtn.className = 'btn-primary';
-    interviewBtn.style.width = '100%';
-    interviewBtn.style.marginBottom = '4px';
-    interviewBtn.textContent = 'Start the Interview';
-    interviewBtn.id = 'start-interview-btn';
-    card.appendChild(interviewBtn);
-
-    const estimate = document.createElement('div');
-    estimate.style.cssText = 'text-align:center; font-family:"Space Mono",monospace; font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); margin-bottom:20px;';
-    estimate.textContent = '30-40 minutes';
-    card.appendChild(estimate);
-  }
 
   const orLabel = document.createElement('div');
   orLabel.className = 'prompt-body';
   orLabel.style.cssText = 'font-weight:700; color:var(--text); margin-bottom:10px;';
-  orLabel.textContent = showInterview ? 'Or try one of these:' : 'Try one of these to start:';
+  orLabel.textContent = 'Try one of these to start:';
   card.appendChild(orLabel);
 
   const prompts = [
     "Find the biggest automation opportunities in my business",
     "Help me think through my business model",
+    "Park this idea for later review:",
     "Where would custom-built tools give me the most leverage?",
   ];
 
@@ -1645,65 +1557,16 @@ function showSuggestedPrompts(showInterview) {
 
   chatArea.appendChild(card);
   scrollToBottom();
-
-  if (showInterview) {
-    document.getElementById('start-interview-btn').addEventListener('click', () => {
-      const promptCard = document.getElementById('prompt-card');
-      if (promptCard) promptCard.remove();
-      conversationHistory.push({ role: 'user', content: "Hey team, I'm new here! I'd love for you all to get to know me." });
-      addMessage('user', "Hey team, I'm new here! I'd love for you all to get to know me.");
-      sendMessageDirect();
-    });
-  }
-}
-
-function showInterviewNudge() {
-  const card = document.createElement('div');
-  card.className = 'prompt-card';
-  card.id = 'prompt-card';
-
-  card.innerHTML = `
-    <div class="prompt-headline">Welcome back.</div>
-    <div class="prompt-body">Want to do the get-to-know-you session today? It takes about 30-40 minutes and helps us give you much better advice.</div>
-  `;
-
-  const yesBtn = document.createElement('button');
-  yesBtn.className = 'suggested-prompt';
-  yesBtn.textContent = "Yes, let's do it";
-  yesBtn.addEventListener('click', () => {
-    const promptCard = document.getElementById('prompt-card');
-    if (promptCard) promptCard.remove();
-    conversationHistory.push({ role: 'user', content: "Hey team, I'm back! Let's get to know each other." });
-    addMessage('user', "Hey team, let's get to know each other.");
-    sendMessageDirect();
-  });
-
-  const noBtn = document.createElement('button');
-  noBtn.className = 'suggested-prompt';
-  noBtn.textContent = "No, let's just dive in";
-  noBtn.addEventListener('click', () => {
-    const promptCard = document.getElementById('prompt-card');
-    if (promptCard) promptCard.remove();
-    // Record that we nudged today
-    localStorage.setItem('bmad_last_nudge_' + userLabel, new Date().toDateString());
-    addStatus("No problem. I'll ask again tomorrow. Let's dive in.");
-    showSuggestedPrompts(false);
-  });
-
-  card.appendChild(yesBtn);
-  card.appendChild(noBtn);
-  chatArea.appendChild(card);
-  scrollToBottom();
 }
 
 // ---- QUICK TOUR ----
 const TOUR_STEPS = [
-  { fullscreen: true, headline: "Welcome to Mastermind.", text: 'You now have access to a team of 8 AI advisors who know business, strategy, tech, and storytelling. They don\'t just answer questions. They challenge each other, push back, and think along with you.<br><br>It\'s like having a boardroom full of experts available whenever you need them, for as long as you need them, to talk about exactly what you\'d like input on. They will never get tired, they will never get bored, they will never need to switch to another topic. They are here for you, and you alone.<br><br>Describe what you\'re working on and they\'ll get to work.', btnText: "Let's Go" },
+  { fullscreen: true, headline: "Welcome to Mastermind.", text: 'You now have one fast strategic voice for Command Center. Mastermind can advise, draft, challenge assumptions, and park ideas in this conversation.<br><br>Read-only testing is active. Mastermind will not create tasks, write to Asana, send messages, or change business systems.<br><br>Describe what you are working on and Mastermind will get to work.', btnText: "Let's Go" },
   { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
-  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear each agent speak in their own voice.', position: 'below', voiceOnly: true },
+  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear Mastermind speak.', position: 'below', voiceOnly: true },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
-  { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to the team.' : 'Type here, or tap the mic button to talk to the team.', position: 'above' },
-  { fullscreen: true, headline: "All done.", text: "Let's meet the team.", btnText: 'Meet the team' },
+  { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to Mastermind.' : 'Type here, or tap the mic button to talk to Mastermind.', position: 'above' },
+  { fullscreen: true, headline: "All done.", text: "Mastermind is ready.", btnText: 'Start' },
 ];
 
 let tourStep = 0;
@@ -1833,38 +1696,21 @@ document.getElementById('start-btn').addEventListener('click', async () => {
     return;
   }
 
-  // Check user context
-  let userData = { is_new: true, interview_complete: false };
-  try {
-    const ctxResp = await apiFetch('/api/user-context?user_label=' + encodeURIComponent(userLabel));
-    if (ctxResp.ok) userData = await ctxResp.json();
-  } catch (e) {}
-
   // Buddy always gets the first-time experience (for auditing)
   if (userLabel === 'buddy') {
     localStorage.removeItem('bmad_tour_done_buddy');
   }
 
   const tourDone = localStorage.getItem('bmad_tour_done_' + userLabel);
-  const lastNudge = localStorage.getItem('bmad_last_nudge_' + userLabel);
-  const nudgedToday = lastNudge === new Date().toDateString();
-
   if (!tourDone) {
-    // First ever login: tour → intros → prompts with interview option
+    // First ever login: tour, Mastermind intro, then prompts
     startTour(() => {
       addStatus('Session started');
-      showTeamIntros();
-      showSuggestedPrompts(true);
+      showMastermindIntro();
+      showSuggestedPrompts();
       chatArea.scrollTop = 0;
     });
-  } else if (!userData.interview_complete && !nudgedToday) {
-    // Returning user, no interview yet, first login today: nudge
-    addStatus('Session started');
-    showInterviewNudge();
-    chatArea.scrollTop = 0;
-    messageInput.focus();
   } else {
-    // Returning user, interview done or already nudged today
     addStatus('Session started');
     messageInput.focus();
   }
@@ -2077,15 +1923,7 @@ async function _streamResponse() {
       }
     }
 
-    // Check for interview completion marker
-    if (fullText.includes('[INTERVIEW_COMPLETE]')) {
-      fullText = fullText.replace('[INTERVIEW_COMPLETE]', '').trim();
-      apiFetch('/api/user-context', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_label: userLabel, interview_complete: true, context_text: '', append: true }),
-      }).catch(console.error);
-    }
+    fullText = fullText.replace('[INTERVIEW_COMPLETE]', '').trim();
 
     conversationHistory.push({ role: 'assistant', content: fullText });
 
@@ -2130,23 +1968,15 @@ async function _streamResponse() {
   sendBtn.disabled = false;
 }
 
-// ---- PARSE AGENTS ----
+// ---- PARSE MASTERMIND ----
 function parseAgentBlocks(text) {
-  const blocks = [];
-  const regex = /\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:\s*([\s\S]*?)(?=\n\n\[(?:ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER)\]:|$)/g;
-
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    blocks.push({ agent: match[1], text: match[2].trim() });
-  }
-
-  if (blocks.length === 0) {
-    blocks.push({ agent: 'PM', text: text.trim() });
-  }
-  return blocks;
+  const cleaned = text
+    .replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER|MASTERMIND)\]:\s*/g, '')
+    .trim();
+  return [{ agent: 'MASTERMIND', text: cleaned }];
 }
 
-// ---- DISPLAY AGENTS ----
+// ---- DISPLAY MASTERMIND ----
 function displayAgentBlocks(blocks) {
   for (const block of blocks) {
     const div = document.createElement('div');
@@ -2209,12 +2039,12 @@ async function prefetchAudio(block) {
     const response = await apiFetch('/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: block.text, agent: block.agent }),
+      body: JSON.stringify({ text: block.text }),
     });
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');
-      console.error('Speak API error for', block.agent, ':', response.status, errText);
+      console.error('Speak API error:', response.status, errText);
       return null;
     }
 
@@ -2239,7 +2069,7 @@ async function playAgentAudio(blocks) {
   isPlaying = true;
   showStopButton(true);
 
-  // Show agent pips in speaking label area
+  // Show speaking status
   speakingLabel.innerHTML = '';
   const pipRow = document.createElement('div');
   pipRow.style.cssText = 'display:flex; gap:6px; justify-content:center; align-items:center;';
@@ -2350,7 +2180,7 @@ function showThinking() {
   const status = document.createElement('div');
   status.className = 'progress-status';
   status.id = 'progress-status';
-  status.textContent = 'Calling the team...';
+  status.textContent = 'Calling Mastermind...';
 
   const track = document.createElement('div');
   track.className = 'progress-bar-track';
@@ -2376,7 +2206,7 @@ function showThinking() {
   // Stage 2: after a beat
   setTimeout(() => {
     if (document.getElementById('progress-status')) {
-      document.getElementById('progress-status').textContent = 'Team is listening...';
+      document.getElementById('progress-status').textContent = 'Mastermind is listening...';
       fill.style.width = '35%';
     }
   }, 800);
@@ -2388,7 +2218,7 @@ function updateThinkingStage(stage) {
   if (!status || !fill) return;
 
   if (stage === 'streaming') {
-    status.textContent = 'Agents are responding...';
+    status.textContent = 'Mastermind is responding...';
     fill.style.width = '65%';
   } else if (stage === 'done') {
     status.textContent = 'Response ready';
@@ -2604,7 +2434,7 @@ document.getElementById('end-download').addEventListener('click', async () => {
 1. Executive Summary (3 to 5 bullet points of the most important outcomes)
 2. Key Insights and Decisions Made
 3. Open Questions That Need Answers
-4. Action Items (be specific and actionable)
+4. Suggested Next Moves (be specific, but do not imply anything was created or changed)
 
 Session cost: $${sessionCost.toFixed(4)}
 Include the session cost in the summary.`;
@@ -2722,7 +2552,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
       if (msg.role === 'user') {
         lines.push(`### You\n${msg.content}\n`);
       } else {
-        lines.push(`### Team\n${msg.content}\n`);
+        lines.push(`### Mastermind\n${msg.content}\n`);
       }
     }
     return lines.join('\n');

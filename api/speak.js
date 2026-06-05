@@ -1,17 +1,11 @@
 const DEFAULT_VOICE = 'a0e99841-438c-4a64-b679-ae501e7d6091';
 
-function getVoiceId(agent) {
-  const map = {
-    ANALYST: process.env.CARTESIA_VOICE_ID_ANALYST,
-    PM: process.env.CARTESIA_VOICE_ID_PM,
-    ARCHITECT: process.env.CARTESIA_VOICE_ID_ARCHITECT,
-    DEVELOPER: process.env.CARTESIA_VOICE_ID_DEVELOPER,
-    STRATEGIST: process.env.CARTESIA_VOICE_ID_STRATEGIST,
-    PROBLEM_SOLVER: process.env.CARTESIA_VOICE_ID_PROBLEM_SOLVER,
-    BRAINSTORM_COACH: process.env.CARTESIA_VOICE_ID_BRAINSTORM_COACH,
-    STORYTELLER: process.env.CARTESIA_VOICE_ID_STORYTELLER,
-  };
-  return (map[agent] || DEFAULT_VOICE).trim();
+function getVoiceId() {
+  return (
+    process.env.CARTESIA_VOICE_ID_MASTERMIND ||
+    process.env.CARTESIA_VOICE_ID ||
+    DEFAULT_VOICE
+  ).trim();
 }
 
 function cleanTextForSpeech(text) {
@@ -35,7 +29,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { text, agent } = req.body;
+  const { text } = req.body;
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Text is required' });
@@ -46,8 +40,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No speakable text after cleaning' });
   }
 
-  const voiceId = getVoiceId(agent);
-  console.log('Speaking for agent:', agent, 'voiceId:', voiceId);
+  const voiceId = getVoiceId();
+  console.log('Speaking with Mastermind voice');
 
   try {
     const response = await fetch('https://api.cartesia.ai/tts/bytes', {
@@ -74,7 +68,7 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errBody = await response.text();
       console.error('Cartesia error:', response.status, errBody);
-      return res.status(502).json({ error: 'Voice service error', detail: errBody, voiceId, agent });
+      return res.status(502).json({ error: 'Voice service error', detail: errBody });
     }
 
     const audioBuffer = await response.arrayBuffer();
