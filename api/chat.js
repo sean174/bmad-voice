@@ -413,6 +413,216 @@ function summarizeOlderMessages(messages) {
   return [summary, ...recent];
 }
 
+function getHermesConfig() {
+  const baseUrl = (process.env.HERMES_API_BASE_URL || '').trim().replace(/\/+$/, '');
+  const enabledEnv = process.env.HERMES_BRAIN_ENABLED;
+  const enabled = enabledEnv === undefined
+    ? Boolean(baseUrl)
+    : !['false', '0', 'off', 'no'].includes(String(enabledEnv).toLowerCase());
+
+  return {
+    baseUrl,
+    enabled: enabled && Boolean(baseUrl),
+    model: process.env.HERMES_MODEL || 'hermes-agent',
+    apiKey: process.env.HERMES_API_KEY || '',
+    fallbackToAnthropic: process.env.HERMES_BRAIN_FALLBACK_TO_ANTHROPIC === 'true',
+  };
+}
+
+function buildHermesSystemMessage(systemPrompt) {
+  return `You are Hermes Agent acting as the Mastermind voice interface.
+
+Phase 1 safety constraints:
+- Phase 1 is read-only mode.
+- Allowed write: capture ideas only through the existing Mastermind Ideas endpoint/UI, not through arbitrary tool actions.
+- Do not execute business-system changes, deployments, commits, pushes, GHL/Slack/Google/Asana/Vercel actions, or filesystem changes from voice requests.
+- If the user requests an action, produce a plan or ask for approval, but do not do it.
+
+Existing Mastermind instructions and context:
+${systemPrompt}`;
+}
+
+function writeSseHeaders(res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+}
+
+function writeTextChunk(res, content) {
+  res.write(`data: ${JSON.stringify({ type: 'text', content })}\n\n`);
+}
+
+function writeDoneChunk(res, inputTokens, outputTokens, estimatedCost) {
+  res.write(`data: ${JSON.stringify({
+    type: 'done',
+    usage: { inputTokens, outputTokens, estimatedCost: Math.round(estimatedCost * 10000) / 10000 }
+  })}\n\n`);
+}
+
+function splitSseLines(buffer, chunk) {
+  const combined = buffer + chunk;
+  const lines = combined.split('\n');
+  return {
+    lines: lines.slice(0, -1),
+    buffer: lines[lines.length - 1],
+  };
+}
+
+function getSseData(line) {
+  if (!line.startsWith('data:')) return null;
+  return line.slice(5).trim();
+}
+
+async function startHermesStream(systemPrompt, managedMessages) {
+  const config = getHermesConfig();
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+
+  return fetch(`${config.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: buildHermesSystemMessage(systemPrompt) },
+        ...managedMessages,
+      ],
+      stream: true,
+      stream_options: { include_usage: true },
+    }),
+  });
+}
+
+async function startAnthropicStream(systemPrompt, managedMessages) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: managedMessages,
+      stream: true,
+    }),
+  });
+}
+
+async function streamHermesToBrowser(response, res) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const decoded = decoder.decode(value, { stream: true });
+    const split = splitSseLines(buffer, decoded);
+    buffer = split.buffer;
+
+    for (const line of split.lines) {
+      const data = getSseData(line);
+      if (data === null) continue;
+      if (!data || data === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+        if (content) {
+          fullResponse += content;
+          writeTextChunk(res, content);
+        }
+
+        if (parsed.usage) {
+          inputTokens = parsed.usage.prompt_tokens || inputTokens;
+          outputTokens = parsed.usage.completion_tokens || outputTokens;
+        }
+      } catch (e) {
+        // skip unparseable provider lines
+      }
+    }
+  }
+
+  if (buffer.startsWith('data:')) {
+    const data = getSseData(buffer);
+    if (data && data !== '[DONE]') {
+      try {
+        const parsed = JSON.parse(data);
+        const content = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+        if (content) {
+          fullResponse += content;
+          writeTextChunk(res, content);
+        }
+        if (parsed.usage) {
+          inputTokens = parsed.usage.prompt_tokens || inputTokens;
+          outputTokens = parsed.usage.completion_tokens || outputTokens;
+        }
+      } catch (e) {
+        // skip unparseable provider lines
+      }
+    }
+  }
+
+  return { fullResponse, inputTokens, outputTokens, estimatedCost: 0 };
+}
+
+async function streamAnthropicToBrowser(response, res) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const decoded = decoder.decode(value, { stream: true });
+    const split = splitSseLines(buffer, decoded);
+    buffer = split.buffer;
+
+    for (const line of split.lines) {
+      const data = getSseData(line);
+      if (data === null) continue;
+      if (!data || data === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(data);
+
+        if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+          fullResponse += parsed.delta.text;
+          writeTextChunk(res, parsed.delta.text);
+        }
+
+        if (parsed.type === 'message_start' && parsed.message?.usage) {
+          inputTokens = parsed.message.usage.input_tokens || 0;
+        }
+
+        if (parsed.type === 'message_delta' && parsed.usage) {
+          outputTokens = parsed.usage.output_tokens || 0;
+        }
+      } catch (e) {
+        // skip unparseable provider lines
+      }
+    }
+  }
+
+  // Estimate cost: Sonnet pricing ~$3/M input, $15/M output
+  const estimatedCost = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000);
+
+  return { fullResponse, inputTokens, outputTokens, estimatedCost };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -490,88 +700,67 @@ export default async function handler(req, res) {
     }
   }
 
+  const hermesConfig = getHermesConfig();
+
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: managedMessages,
-        stream: true,
-      }),
-    });
+    let provider = 'anthropic';
+    let response;
+    let streamResult;
+
+    if (hermesConfig.enabled) {
+      provider = 'hermes';
+      console.log('Chat brain provider: Hermes');
+      try {
+        response = await startHermesStream(systemPrompt, managedMessages);
+      } catch (e) {
+        console.warn('Hermes brain request failed before stream');
+        if (!hermesConfig.fallbackToAnthropic) {
+          return res.status(502).json({ error: 'AI service error' });
+        }
+
+        provider = 'anthropic';
+        console.log('Chat brain provider: Anthropic fallback');
+        response = await startAnthropicStream(systemPrompt, managedMessages);
+      }
+
+      if (provider === 'hermes' && !response.ok) {
+        console.warn('Hermes brain unavailable before stream', { status: response.status });
+        if (!hermesConfig.fallbackToAnthropic) {
+          return res.status(502).json({ error: 'AI service error' });
+        }
+
+        provider = 'anthropic';
+        console.log('Chat brain provider: Anthropic fallback');
+        response = await startAnthropicStream(systemPrompt, managedMessages);
+      }
+    } else {
+      console.log('Chat brain provider: Anthropic');
+      response = await startAnthropicStream(systemPrompt, managedMessages);
+    }
 
     if (!response.ok) {
-      const errBody = await response.text();
-      console.error('Claude API error:', errBody);
+      console.warn('Anthropic brain unavailable before stream', { status: response.status });
       return res.status(502).json({ error: 'AI service error' });
     }
 
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    writeSseHeaders(res);
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullResponse = '';
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-
-            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-              fullResponse += parsed.delta.text;
-              res.write(`data: ${JSON.stringify({ type: 'text', content: parsed.delta.text })}\n\n`);
-            }
-
-            if (parsed.type === 'message_start' && parsed.message?.usage) {
-              inputTokens = parsed.message.usage.input_tokens || 0;
-            }
-
-            if (parsed.type === 'message_delta' && parsed.usage) {
-              outputTokens = parsed.usage.output_tokens || 0;
-            }
-          } catch (e) {
-            // skip unparseable lines
-          }
-        }
-      }
+    if (provider === 'hermes') {
+      streamResult = await streamHermesToBrowser(response, res);
+    } else {
+      streamResult = await streamAnthropicToBrowser(response, res);
     }
 
-    // Estimate cost: Sonnet pricing ~$3/M input, $15/M output
-    const estimatedCost = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000);
-
-    res.write(`data: ${JSON.stringify({
-      type: 'done',
-      usage: { inputTokens, outputTokens, estimatedCost: Math.round(estimatedCost * 10000) / 10000 }
-    })}\n\n`);
-
+    writeDoneChunk(res, streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost);
     res.end();
 
-    // Log asynchronously
-    logMessage(inputTokens, outputTokens, estimatedCost, user_label).catch(console.error);
+    logMessage(streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost, user_label).catch(console.error);
 
   } catch (err) {
-    console.error('Chat error:', err);
+    console.error('Chat error');
+    if (res.headersSent) {
+      return res.end();
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
