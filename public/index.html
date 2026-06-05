@@ -1796,7 +1796,7 @@ function truncateIdeaText(text) {
 }
 
 function getIdeaCommandText(text) {
-  const match = text.match(/^\s*(?:save\s+this\s+as\s+an\s+idea|save\s+as\s+idea|save\s+this\s+idea|capture\s+this\s+idea|add\s+this\s+to\s+ideas|add\s+to\s+ideas|put\s+this\s+in\s+ideas|park\s+this\s+idea|note\s+this\s+idea)(?:\s*(?:[:.,-]|—)\s*|\s+)([\s\S]+)$/i);
+  const match = text.match(/^\s*(?:save\s+this\s+as\s+an\s+idea|save\s+as\s+idea|save\s+this\s+idea|capture\s+this\s+idea|add\s+this\s+to\s+ideas|add\s+to\s+ideas|put\s+this\s+in\s+ideas|park\s+this\s+idea|note\s+this\s+idea)(?:\s*[:.,\-–—]\s*|\s+)([\s\S]+)$/i);
   if (!match) return '';
 
   const ideaText = match[1].trim();
@@ -1808,6 +1808,7 @@ window.__testIdeaCommandText = () => [
   'Save this as an idea daily voice briefing',
   'Save this as an idea, daily voice briefing',
   'Save this as an idea - daily voice briefing',
+  'save this idea – lets triple our ROI',
   'Save this idea: daily voice briefing',
   'Add to ideas daily voice briefing',
   'should I save this as an idea?',
