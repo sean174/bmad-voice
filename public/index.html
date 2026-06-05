@@ -309,6 +309,15 @@
       color: var(--text-dim);
     }
 
+    #mode-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--text-mid);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     /* Voice toggle pill */
     .voice-toggle-pill {
       display: flex;
@@ -1256,6 +1265,7 @@
       <div id="header-stats">
         <div id="session-cost">$0.00</div>
         <div id="session-timer">00:00</div>
+        <div id="mode-label">Fast Mode</div>
       </div>
     </div>
     <div class="voice-toggle-pill">
@@ -1405,6 +1415,7 @@ const stopBtn = document.getElementById('stop-btn');
 const stopBar = document.getElementById('stop-bar');
 const sessionCostEl = document.getElementById('session-cost');
 const sessionTimerEl = document.getElementById('session-timer');
+const modeLabel = document.getElementById('mode-label');
 const speakingLabel = document.getElementById('speaking-label');
 const controlsEl = document.getElementById('controls');
 
@@ -1803,6 +1814,23 @@ function getIdeaCommandText(text) {
   return ideaText.replace(/\s/g, '').length >= 3 ? ideaText : '';
 }
 
+function inferVisibleRequestMode(text) {
+  const normalized = String(text || '').toLowerCase();
+  const deepPatterns = [
+    /\b(deep|full)\s+(mode|context|analysis|dive)\b/,
+    /\b(analy[sz]e|analysis|investigate|research|audit)\b/,
+    /\b(code|coding|implement|implementation|repo|files?|filesystem|config|configuration|env|api|database|migration)\b/,
+    /\b(deploy|deployment|vercel|debug|bug|fix|review|pull request|pr)\b/,
+    /\b(operator|operation|execute|run|change|update|create|delete|commit|push)\b/,
+  ];
+  return deepPatterns.some(pattern => pattern.test(normalized)) ? 'Deep Mode' : 'Fast Mode';
+}
+
+function setModeHint(text) {
+  if (!modeLabel) return;
+  modeLabel.textContent = inferVisibleRequestMode(text);
+}
+
 window.__testIdeaCommandText = () => [
   'Save this as an idea. daily voice briefing',
   'Save this as an idea daily voice briefing',
@@ -2007,6 +2035,7 @@ async function sendMessage() {
   messageInput.value = '';
   addMessage('user', text);
   conversationHistory.push({ role: 'user', content: text });
+  setModeHint(text);
 
   const ideaText = getIdeaCommandText(text);
   if (ideaText) {
