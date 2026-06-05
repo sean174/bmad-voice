@@ -585,6 +585,17 @@
       align-items: center;
     }
 
+    .progress-preview {
+      color: var(--text-mid);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-top: 12px;
+      max-height: 180px;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+
     .progress-agent-pip {
       width: 24px;
       height: 24px;
@@ -1779,6 +1790,70 @@ function setIdeaStatus(text) {
   ideaStatus.textContent = text;
 }
 
+function truncateIdeaText(text) {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  return cleaned.length > 90 ? `${cleaned.slice(0, 87)}...` : cleaned;
+}
+
+function getIdeaCommandText(text) {
+  const match = text.match(/^\s*(?:save\s+this\s+as\s+an\s+idea|save\s+as\s+idea|capture\s+this\s+idea|add\s+this\s+to\s+ideas)\s*:\s*([\s\S]+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function clearVoiceCaptureState() {
+  messageInput.value = '';
+  if (isRecording) {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch (e) {}
+    }
+  }
+}
+
+async function saveIdeaText(text) {
+  const response = await apiFetch('/api/ideas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      session_id: sessionId,
+      tags: ['phase-0'],
+      meta: {
+        user_label: userLabel,
+        saved_at: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (response.status === 503) {
+    throw new Error('Ideas bridge is not connected yet.');
+  }
+
+  if (!response.ok) {
+    throw new Error('Could not save idea.');
+  }
+
+  return response;
+}
+
+function logConversationExchange(userMessage, assistantMessage) {
+  if (!sessionId) return;
+
+  apiFetch('/api/conversation-log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      user_label: userLabel,
+      user_message: userMessage,
+      assistant_message: assistantMessage,
+    }),
+  }).catch(console.error);
+}
+
 function getIdeaTextToSave() {
   const start = messageInput.selectionStart;
   const end = messageInput.selectionEnd;
@@ -1801,33 +1876,10 @@ saveIdeaBtn.addEventListener('click', async () => {
   setIdeaStatus('Saving...');
 
   try {
-    const response = await apiFetch('/api/ideas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        session_id: sessionId,
-        tags: ['phase-0'],
-        meta: {
-          user_label: userLabel,
-          saved_at: new Date().toISOString(),
-        },
-      }),
-    });
-
-    if (response.status === 503) {
-      setIdeaStatus('Ideas bridge is not connected yet.');
-      return;
-    }
-
-    if (!response.ok) {
-      setIdeaStatus('Could not save idea.');
-      return;
-    }
-
+    await saveIdeaText(text);
     setIdeaStatus('Saved to ideas.');
   } catch (e) {
-    setIdeaStatus('Could not save idea.');
+    setIdeaStatus(e.message || 'Could not save idea.');
   } finally {
     saveIdeaBtn.disabled = false;
   }
@@ -1940,6 +1992,35 @@ async function sendMessage() {
   addMessage('user', text);
   conversationHistory.push({ role: 'user', content: text });
 
+  const ideaText = getIdeaCommandText(text);
+  if (ideaText) {
+    isWaiting = true;
+    sendBtn.disabled = true;
+    saveIdeaBtn.disabled = true;
+    setIdeaStatus('Saving...');
+    clearVoiceCaptureState();
+
+    let assistantMessage = '';
+    try {
+      await saveIdeaText(ideaText);
+      assistantMessage = `Saved to Ideas: ${truncateIdeaText(ideaText)}`;
+      setIdeaStatus('Saved to ideas.');
+    } catch (e) {
+      assistantMessage = 'I could not save that idea.';
+      setIdeaStatus(e.message || 'Could not save idea.');
+      showToast(e.message || 'Could not save idea.', 'error');
+    }
+
+    displayAgentBlocks([{ agent: 'MASTERMIND', text: assistantMessage }]);
+    conversationHistory.push({ role: 'assistant', content: assistantMessage });
+    logConversationExchange(text, assistantMessage);
+
+    isWaiting = false;
+    sendBtn.disabled = false;
+    saveIdeaBtn.disabled = false;
+    return;
+  }
+
   isWaiting = true;
   sendBtn.disabled = true;
   showThinking();
@@ -1979,14 +2060,19 @@ async function _streamResponse() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
+    let buffer = '';
     let streamStarted = false;
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        buffer += decoder.decode();
+        break;
+      }
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
@@ -1998,6 +2084,7 @@ async function _streamResponse() {
                 updateThinkingStage('streaming');
               }
               fullText += data.content;
+              updateThinkingText(fullText);
             }
             if (data.type === 'done' && data.usage) {
               totalInputTokens += data.usage.inputTokens;
@@ -2010,23 +2097,42 @@ async function _streamResponse() {
       }
     }
 
+    if (buffer.startsWith('data: ')) {
+      try {
+        const data = JSON.parse(buffer.slice(6));
+        if (data.type === 'text') {
+          if (!streamStarted) {
+            streamStarted = true;
+            updateThinkingStage('streaming');
+          }
+          fullText += data.content;
+          updateThinkingText(fullText);
+        }
+        if (data.type === 'done' && data.usage) {
+          totalInputTokens += data.usage.inputTokens;
+          totalOutputTokens += data.usage.outputTokens;
+          sessionCost += data.usage.estimatedCost;
+          updateCost();
+        }
+      } catch (e) {}
+    }
+
     fullText = fullText.replace('[INTERVIEW_COMPLETE]', '').trim();
+
+    if (!fullText) {
+      removeThinking();
+      showToast('Mastermind did not return a response. Please try again.', 'error');
+      isWaiting = false;
+      sendBtn.disabled = false;
+      return;
+    }
 
     conversationHistory.push({ role: 'assistant', content: fullText });
 
     // Log message exchange to database (async, fire and forget)
     const lastUserMsg = [...conversationHistory].reverse().find(m => m.role === 'user');
-    if (lastUserMsg && sessionId) {
-      apiFetch('/api/conversation-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: sessionId,
-          user_label: userLabel,
-          user_message: lastUserMsg.content,
-          assistant_message: fullText,
-        }),
-      }).catch(console.error);
+    if (lastUserMsg) {
+      logConversationExchange(lastUserMsg.content, fullText);
     }
 
     const agentBlocks = parseAgentBlocks(fullText);
@@ -2277,12 +2383,18 @@ function showThinking() {
   fill.id = 'progress-fill';
   track.appendChild(fill);
 
+  const preview = document.createElement('div');
+  preview.className = 'progress-preview';
+  preview.id = 'progress-preview';
+  preview.textContent = '';
+
   const agents = document.createElement('div');
   agents.className = 'progress-agents';
   agents.id = 'progress-agents';
 
   div.appendChild(status);
   div.appendChild(track);
+  div.appendChild(preview);
   div.appendChild(agents);
   chatArea.appendChild(div);
   scrollToBottom();
@@ -2293,7 +2405,7 @@ function showThinking() {
   // Stage 2: after a beat
   setTimeout(() => {
     if (document.getElementById('progress-status')) {
-      document.getElementById('progress-status').textContent = 'Mastermind is listening...';
+      document.getElementById('progress-status').textContent = 'Hermes is thinking...';
       fill.style.width = '35%';
     }
   }, 800);
@@ -2305,12 +2417,23 @@ function updateThinkingStage(stage) {
   if (!status || !fill) return;
 
   if (stage === 'streaming') {
-    status.textContent = 'Mastermind is responding...';
+    status.textContent = 'Drafting response...';
     fill.style.width = '65%';
   } else if (stage === 'done') {
     status.textContent = 'Response ready';
     fill.style.width = '100%';
   }
+}
+
+function updateThinkingText(text) {
+  const preview = document.getElementById('progress-preview');
+  if (!preview) return;
+
+  const cleaned = text.replace('[INTERVIEW_COMPLETE]', '').trimStart();
+  preview.textContent = cleaned.length > 1200
+    ? `...${cleaned.slice(cleaned.length - 1200)}`
+    : cleaned;
+  scrollToBottom();
 }
 
 function removeThinking() {
