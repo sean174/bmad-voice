@@ -4,8 +4,18 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const chatJob = fs.readFileSync(path.join(root, 'api', 'chat-job.js'), 'utf8');
+const chatJobs = fs.readFileSync(path.join(root, 'api', 'mastermind-chat-jobs.js'), 'utf8');
 const chat = fs.readFileSync(path.join(root, 'api', 'chat.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+
+for (const value of [
+  'background_continuation: true',
+  'background_continuation: false',
+  'MASTERMIND_CHAT_JOB_INLINE',
+  'Queued for the Mastermind VPS worker',
+]) {
+  assert(chatJob.includes(value), `api/chat-job.js should include ${value}`);
+}
 
 for (const value of [
   'mastermind_chat_jobs',
@@ -14,11 +24,20 @@ for (const value of [
   'completed',
   'failed',
   'assistant_message',
-  'generateChatCompletion',
-  'background_continuation: false',
-  'waitUntil/after',
 ]) {
-  assert(chatJob.includes(value), `api/chat-job.js should include ${value}`);
+  assert(chatJobs.includes(value), `api/mastermind-chat-jobs.js should include ${value}`);
+}
+
+for (const value of [
+  'generateChatCompletion',
+  'FOR UPDATE SKIP LOCKED',
+  "status = 'queued'",
+  "status = 'running' AND updated_at < NOW()",
+  'runClaimedJob',
+  'markJobCompleted',
+  'markJobFailed',
+]) {
+  assert(chatJobs.includes(value), `api/mastermind-chat-jobs.js should include ${value}`);
 }
 
 assert(chat.includes('export async function generateChatCompletion'), 'api/chat.js should export generateChatCompletion');
@@ -34,6 +53,9 @@ for (const value of [
   "apiFetch(`/api/chat-job?job_id=${encodeURIComponent(pending.job_id)}`)",
   'localStorage.setItem(PENDING_CHAT_JOB_KEY',
   'Mastermind is still working. You can leave and come back.',
+  "window.addEventListener('pageshow', handleLifecycleResume)",
+  "document.addEventListener('resume', handleLifecycleResume)",
+  'setTimeout(pollPendingChatJob, 500)',
 ]) {
   assert(index.includes(value), `public/index.html should include ${value}`);
 }
