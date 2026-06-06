@@ -5,6 +5,8 @@ const vm = require('vm');
 
 const chatPath = path.join(__dirname, '..', 'api', 'chat.js');
 const source = fs.readFileSync(chatPath, 'utf8')
+  .replace(/^import\s+\{\s*Pool\s*\}\s+from\s+'@neondatabase\/serverless';\n/m, '')
+  .replace(/^export\s+async\s+function\s+generateChatCompletion/m, 'async function generateChatCompletion')
   .replace(/^export\s+default\s+async\s+function\s+handler/m, 'async function handler');
 
 const context = {

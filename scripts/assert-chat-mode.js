@@ -24,6 +24,7 @@ this.SYSTEM_PROMPT = SYSTEM_PROMPT;
 this.buildHermesSystemMessage = buildHermesSystemMessage;
 this.resolveRequestMode = resolveRequestMode;
 this.isFastModeEscalationRequest = isFastModeEscalationRequest;
+this.formatCommandCenterContext = formatCommandCenterContext;
 this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;`, context, {
   filename: chatPath,
 });
@@ -60,7 +61,10 @@ const compact = context.formatCompactCommandCenterContext({
   data: {
     generated_at: '2026-06-05T00:00:00Z',
     scope: 'test',
+    sources: [{ name: 'Projects DB', updated_at: '2026-06-04T12:00:00Z' }],
+    source_timestamps: { projects: '2026-06-04T12:00:00Z' },
     kpi_headlines: { revenue: '$1' },
+    top_projects: [{ title: 'Enrollment Sprint', priority: 'P1', summary: 'Fill advisor pipeline' }],
     blockers: [{ title: 'Blocked launch', blocked_on: 'approval' }],
     pending_decisions: [{ title: 'Choose offer', question: 'A or B?' }],
     active_operations: [{ title: 'Launch', status: 'active' }],
@@ -70,8 +74,65 @@ const compact = context.formatCompactCommandCenterContext({
 });
 
 assert(compact.includes('generated_at: 2026-06-05T00:00:00Z'));
+assert(compact.includes('sources:'));
+assert(compact.includes('source_timestamps:'));
+assert(compact.includes('top_projects:'));
+assert(compact.includes('Enrollment Sprint'));
 assert(compact.includes('newest_ideas:'));
 assert(!compact.includes('business_context_docs_excerpts'));
 assert(compact.length <= 8000);
+
+const full = context.formatCommandCenterContext({
+  data: {
+    generatedAt: '2026-06-06T10:00:00Z',
+    context_scope: 'full-business',
+    command_center_state: {
+      summary: 'Command Center is focused on acquisition and delivery capacity.',
+      top_projects: [{ name: 'Advisor Pipeline', priority: 'P1', status: 'active', owner: 'Sean' }],
+      active_operations: [{ name: 'Outbound System', status: 'running', next_step: 'Review reply quality' }],
+      blockers: [{ name: 'Calendar Show Rate', blocked_on: 'appointment quality' }],
+      pending_decisions: [{ name: 'Offer Packaging', question: 'Keep premium tier?' }],
+      recent_ideas: [{ text: 'Build pre-call proof packet', source: 'Mastermind' }],
+      source_timestamps: { ghl: '2026-06-06T09:00:00Z', asana: '2026-06-06T08:30:00Z' },
+    },
+    metrics: { booked_calls: 12, cash_collected: '$42k', access_token: 'ghp_abcdefghijklmnopqrstuvwxyz123456' },
+    sources: [{ title: 'Command Center Snapshot', updated_at: '2026-06-06T09:30:00Z', path: '/readonly/snapshot' }],
+    business_context_docs: [
+      { title: 'Elevated Advisor Operating Brief', updated_at: '2026-06-05', source: 'docs', excerpt: 'Sean runs lead generation for independent financial advisors.' },
+    ],
+    bridge_token: 'ghp_abcdefghijklmnopqrstuvwxyz123456',
+    nested: { api_key: 'sk-abcdefghijklmnopqrstuvwxyz123456' },
+  },
+});
+
+for (const value of [
+  '--- LIVE COMMAND CENTER CONTEXT (read-only) ---',
+  'generated_at: 2026-06-06T10:00:00Z',
+  'scope: full-business',
+  'sources:',
+  'source_timestamps:',
+  'top_projects:',
+  'Advisor Pipeline',
+  'active_operations:',
+  'Outbound System',
+  'blockers:',
+  'Calendar Show Rate',
+  'pending_decisions:',
+  'Offer Packaging',
+  'recent_ideas:',
+  'Build pre-call proof packet',
+  'kpi_headlines:',
+  'booked_calls: 12',
+  'access_token: [redacted]',
+  'business_context_docs_excerpts:',
+  'Elevated Advisor Operating Brief',
+  'source: docs',
+  'command_center_state.summary: Command Center is focused on acquisition and delivery capacity.',
+]) {
+  assert(full.includes(value), `full context should include ${value}`);
+}
+assert(!full.includes('ghp_abcdefghijklmnopqrstuvwxyz123456'));
+assert(!full.includes('sk-abcdefghijklmnopqrstuvwxyz123456'));
+assert(full.length <= 40000);
 
 console.log('Chat mode assertions passed');

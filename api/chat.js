@@ -136,7 +136,7 @@ function asArray(value) {
 function pickFirstObject(root, keys) {
   if (!root || typeof root !== 'object') return null;
   for (const key of keys) {
-    const value = root[key];
+    const value = key.includes('.') ? getNested(root, key) : root[key];
     if (value && typeof value === 'object') return value;
   }
   return null;
@@ -145,7 +145,7 @@ function pickFirstObject(root, keys) {
 function pickFirstArray(root, keys) {
   if (!root || typeof root !== 'object') return [];
   for (const key of keys) {
-    const value = root[key];
+    const value = key.includes('.') ? getNested(root, key) : root[key];
     if (Array.isArray(value)) return value;
   }
   return [];
@@ -189,15 +189,59 @@ function getNested(root, path) {
   return path.split('.').reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), root);
 }
 
-function formatCommandCenterContext(raw) {
+function getContextData(raw) {
   const context = redactSecrets(raw);
-  const data = context && typeof context === 'object' && context.data && typeof context.data === 'object'
+  return context && typeof context === 'object' && context.data && typeof context.data === 'object'
     ? context.data
     : context;
+}
+
+function contextRoots(data) {
+  return [
+    data,
+    getNested(data, 'command_center_state'),
+    getNested(data, 'command_center'),
+    getNested(data, 'business'),
+    getNested(data, 'business_context'),
+    getNested(data, 'snapshot'),
+    getNested(data, 'context'),
+  ].filter(value => value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function pickContextArray(data, keys) {
+  for (const root of contextRoots(data)) {
+    const value = pickFirstArray(root, keys);
+    if (value.length > 0) return value;
+  }
+  return [];
+}
+
+function pickContextObject(data, keys) {
+  for (const root of contextRoots(data)) {
+    const value = pickFirstObject(root, keys);
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+  }
+  return null;
+}
+
+function appendObject(lines, title, item, limit = 20) {
+  lines.push(`${title}:`);
+  if (!item || typeof item !== 'object' || Array.isArray(item) || Object.keys(item).length === 0) {
+    lines.push('- none provided');
+    return;
+  }
+  for (const [key, value] of Object.entries(item).slice(0, limit)) {
+    lines.push(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
+  }
+}
+
+function formatCommandCenterContext(raw) {
+  const data = getContextData(raw);
   if (!data || typeof data !== 'object') return '';
 
-  const docs = pickFirstArray(data, ['business_context_docs', 'business_context_documents', 'context_docs', 'docs']);
-  const kpis = pickFirstObject(data, ['kpi_headlines', 'kpi_headline_keys', 'kpis', 'metrics']);
+  const docs = pickContextArray(data, ['business_context_docs', 'business_context_documents', 'context_docs', 'docs', 'documents', 'reference_docs']);
+  const kpis = pickContextObject(data, ['kpi_headlines', 'kpi_headline_keys', 'kpis', 'metrics', 'kpi.headlines', 'kpi']);
+  const sourceTimestamps = pickContextObject(data, ['source_timestamps', 'sourceTimestamps', 'timestamps.sources', 'source_updated_at']);
 
   const lines = [
     '--- LIVE COMMAND CENTER CONTEXT (read-only) ---',
@@ -205,21 +249,15 @@ function formatCommandCenterContext(raw) {
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
   ];
 
-  appendList(lines, 'sources', pickFirstArray(data, ['sources', 'source_list']), ['name', 'title', 'updated_at', 'updatedAt', 'timestamp', 'generated_at']);
-  appendList(lines, 'top_projects', pickFirstArray(data, ['top_projects', 'projects', 'priority_projects']), ['name', 'title', 'status', 'owner', 'updated_at', 'summary']);
-  appendList(lines, 'active_operations', pickFirstArray(data, ['active_operations', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step']);
-  appendList(lines, 'blockers', pickFirstArray(data, ['blockers', 'risks', 'stuck_items']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on']);
-  appendList(lines, 'pending_decisions', pickFirstArray(data, ['pending_decisions', 'decisions', 'open_decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question']);
-  appendList(lines, 'recent_ideas', pickFirstArray(data, ['recent_ideas', 'ideas']), ['name', 'title', 'text', 'summary', 'created_at', 'source']);
-
-  lines.push('kpi_headline_keys:');
-  if (kpis && typeof kpis === 'object' && Object.keys(kpis).length > 0) {
-    for (const [key, value] of Object.entries(kpis).slice(0, 20)) {
-      lines.push(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
-    }
-  } else {
-    lines.push('- none provided');
-  }
+  appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'type', 'updated_at', 'updatedAt', 'timestamp', 'generated_at', 'url', 'path']);
+  appendObject(lines, 'source_timestamps', sourceTimestamps);
+  appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
+  appendList(lines, 'project_priorities', pickContextArray(data, ['project_priorities', 'priorities.projects', 'priorities']), ['name', 'title', 'priority', 'status', 'owner', 'summary', 'reason']);
+  appendList(lines, 'active_operations', pickContextArray(data, ['active_operations', 'operations.active', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step', 'updated_at']);
+  appendList(lines, 'blockers', pickContextArray(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on', 'next_step']);
+  appendList(lines, 'pending_decisions', pickContextArray(data, ['pending_decisions', 'decisions.pending', 'open_decisions', 'decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question', 'deadline']);
+  appendList(lines, 'recent_ideas', pickContextArray(data, ['recent_ideas', 'newest_ideas', 'ideas.recent', 'ideas']), ['name', 'title', 'text', 'summary', 'created_at', 'createdAt', 'source']);
+  appendObject(lines, 'kpi_headlines', kpis);
 
   lines.push('business_context_docs_excerpts:');
   if (docs.length === 0) {
@@ -228,8 +266,9 @@ function formatCommandCenterContext(raw) {
     for (const doc of docs.slice(0, 12)) {
       const title = doc.title || doc.name || doc.slug || 'document';
       const updated = doc.updated_at || doc.updatedAt || doc.timestamp || '';
+      const source = doc.source || doc.url || doc.path || '';
       const excerpt = doc.excerpt || doc.summary || doc.content || doc.text || '';
-      lines.push(`- ${title}${updated ? ` | ${updated}` : ''}: ${String(excerpt).slice(0, 1500)}`);
+      lines.push(`- ${title}${updated ? ` | ${updated}` : ''}${source ? ` | source: ${source}` : ''}: ${String(excerpt).slice(0, 1500)}`);
     }
   }
 
@@ -237,6 +276,9 @@ function formatCommandCenterContext(raw) {
     'summary',
     'business_context',
     'command_center_summary',
+    'command_center_state.summary',
+    'current_projects_summary',
+    'active_operations_summary',
   ];
   for (const path of fallbackPaths) {
     const value = getNested(data, path);
@@ -247,33 +289,26 @@ function formatCommandCenterContext(raw) {
 }
 
 function formatCompactCommandCenterContext(raw) {
-  const context = redactSecrets(raw);
-  const data = context && typeof context === 'object' && context.data && typeof context.data === 'object'
-    ? context.data
-    : context;
+  const data = getContextData(raw);
   if (!data || typeof data !== 'object') return '';
 
-  const kpis = pickFirstObject(data, ['kpi_headlines', 'kpi_headline_keys', 'kpis', 'metrics']);
+  const kpis = pickContextObject(data, ['kpi_headlines', 'kpi_headline_keys', 'kpis', 'metrics', 'kpi.headlines', 'kpi']);
+  const sourceTimestamps = pickContextObject(data, ['source_timestamps', 'sourceTimestamps', 'timestamps.sources', 'source_updated_at']);
   const lines = [
     '--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---',
     `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
   ];
 
-  lines.push('kpi_headlines:');
-  if (kpis && typeof kpis === 'object' && Object.keys(kpis).length > 0) {
-    for (const [key, value] of Object.entries(kpis).slice(0, 10)) {
-      lines.push(`- ${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
-    }
-  } else {
-    lines.push('- none provided');
-  }
-
-  appendList(lines, 'active_blockers', pickFirstArray(data, ['blockers', 'risks', 'stuck_items']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on'], 8);
-  appendList(lines, 'pending_decisions', pickFirstArray(data, ['pending_decisions', 'decisions', 'open_decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question'], 8);
-  appendList(lines, 'active_operations', pickFirstArray(data, ['active_operations', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step'], 8);
-  appendList(lines, 'recent_operations', pickFirstArray(data, ['recent_operations', 'recent_ops', 'completed_operations']), ['name', 'title', 'status', 'owner', 'summary', 'updated_at'], 6);
-  appendList(lines, 'newest_ideas', pickFirstArray(data, ['newest_ideas', 'recent_ideas', 'ideas']), ['name', 'title', 'text', 'summary', 'created_at', 'source'], 8);
+  appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'updated_at', 'updatedAt', 'timestamp'], 5);
+  appendObject(lines, 'source_timestamps', sourceTimestamps, 8);
+  appendObject(lines, 'kpi_headlines', kpis, 10);
+  appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects']), ['name', 'title', 'priority', 'status', 'owner', 'summary', 'next_step'], 6);
+  appendList(lines, 'active_blockers', pickContextArray(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on'], 6);
+  appendList(lines, 'pending_decisions', pickContextArray(data, ['pending_decisions', 'decisions.pending', 'open_decisions', 'decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question'], 6);
+  appendList(lines, 'active_operations', pickContextArray(data, ['active_operations', 'operations.active', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step'], 6);
+  appendList(lines, 'recent_operations', pickContextArray(data, ['recent_operations', 'recent_ops', 'operations.recent', 'completed_operations']), ['name', 'title', 'status', 'owner', 'summary', 'updated_at'], 4);
+  appendList(lines, 'newest_ideas', pickContextArray(data, ['newest_ideas', 'recent_ideas', 'ideas.recent', 'ideas']), ['name', 'title', 'text', 'summary', 'created_at', 'source'], 6);
 
   return lines.join('\n').slice(0, 8000);
 }
