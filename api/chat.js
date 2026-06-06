@@ -1,3 +1,5 @@
+import { Pool } from '@neondatabase/serverless';
+
 const SYSTEM_PROMPT = `You are Mastermind, Sean's single strategic voice interface for Command Center with a CEO coach layer for Elevated Advisor.
 
 Identity:
@@ -92,7 +94,6 @@ function isFastModeEscalationRequest(text) {
 
 async function getAdminContext() {
   if (!process.env.POSTGRES_URL) return '';
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
   try {
     const result = await pool.query('SELECT context_text FROM admin_context WHERE id = 1');
@@ -318,7 +319,6 @@ async function getCommandCenterContext(mode = 'full') {
 
 async function getRecentConversations(userLabel) {
   if (!process.env.POSTGRES_URL || !userLabel) return '';
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
   try {
     // Get conversations from the last 24 hours for this user
@@ -361,7 +361,6 @@ async function getRecentConversations(userLabel) {
 
 async function getMatchingDocuments(userMessage, conversationMessages) {
   if (!process.env.POSTGRES_URL || !userMessage) return [];
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
   try {
     // Check which document slugs have already been injected in this session
@@ -404,7 +403,6 @@ async function getMatchingDocuments(userMessage, conversationMessages) {
 
 async function getUserContext(userLabel) {
   if (!process.env.POSTGRES_URL || !userLabel) return { context: '', isNew: false };
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
   try {
     await pool.query(`
@@ -439,7 +437,6 @@ function isAdminUser(userLabel) {
 async function checkRateLimits() {
   if (!process.env.POSTGRES_URL) return { allowed: true };
 
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
 
   try {
@@ -482,7 +479,6 @@ async function checkRateLimits() {
 async function logMessage(inputTokens, outputTokens, estimatedCost, userLabel) {
   if (!process.env.POSTGRES_URL) return;
 
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
 
   try {
@@ -679,6 +675,274 @@ async function startAnthropicStream(systemPrompt, managedMessages) {
       stream: true,
     }),
   });
+}
+
+async function startHermesCompletion(systemPrompt, managedMessages) {
+  const config = getHermesConfig();
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+
+  return fetch(`${config.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: buildHermesSystemMessage(systemPrompt) },
+        ...managedMessages,
+      ],
+      stream: false,
+    }),
+  });
+}
+
+async function startAnthropicCompletion(systemPrompt, managedMessages) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: managedMessages,
+      stream: false,
+    }),
+  });
+}
+
+async function prepareChatRequest(reqBody) {
+  const { messages, user_label } = reqBody || {};
+  if (!messages || !Array.isArray(messages)) {
+    const err = new Error('Messages array required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage && lastMessage.content && lastMessage.content.length > 2000) {
+    const err = new Error('Message too long. Keep it under 2,000 characters.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const latestUserText = getLatestUserMessage(messages);
+  const mode = resolveRequestMode(reqBody || {}, latestUserText);
+  const latestIdeaText = getIdeaCommandText(latestUserText);
+
+  if (latestIdeaText) {
+    try {
+      await saveIdeaToCommandCenter(latestIdeaText, reqBody || {});
+      return {
+        mode,
+        provider: 'idea-intercept',
+        contextLoadMs: 0,
+        managedMessages: [],
+        systemPrompt: '',
+        directResponse: `Saved to Ideas: ${truncateIdeaText(latestIdeaText)}`,
+        usage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+      };
+    } catch (e) {
+      console.warn('Chat idea capture failed', { reason: e.message });
+      return {
+        mode,
+        provider: 'idea-intercept',
+        contextLoadMs: 0,
+        managedMessages: [],
+        systemPrompt: '',
+        directResponse: 'I could not save that idea. Try the Save Idea button or retry in a moment.',
+        usage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+      };
+    }
+  }
+
+  const rateLimitCheck = await checkRateLimits();
+  if (!rateLimitCheck.allowed) {
+    const err = new Error(rateLimitCheck.reason);
+    err.statusCode = 429;
+    throw err;
+  }
+
+  const managedMessages = summarizeOlderMessages(messages);
+
+  let systemPrompt = SYSTEM_PROMPT;
+  if (mode === 'fast') {
+    systemPrompt += '\n\n' + FAST_VOICE_PROMPT;
+  } else if (mode === 'operator') {
+    systemPrompt += '\n\n' + OPERATOR_PROMPT;
+  }
+
+  if (user_label && user_label !== 'unknown') {
+    const displayName = user_label.charAt(0).toUpperCase() + user_label.slice(1);
+    systemPrompt += `\n\nThe user's name is ${displayName}. Use their name naturally in conversation. Not every response, but enough that it feels personal.`;
+  }
+
+  if (mode === 'fast' && isFastModeEscalationRequest(latestUserText)) {
+    return {
+      mode,
+      provider: 'fast-escalation',
+      contextLoadMs: 0,
+      managedMessages: [],
+      systemPrompt: '',
+      directResponse: 'That needs Operator/Codex mode. I can outline the next step here, but this read-only Mastermind path will not change files, deploy, debug, or execute operations.',
+      usage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
+    };
+  }
+
+  const contextStartedAt = Date.now();
+  const isAdmin = isAdminUser(user_label);
+
+  if (mode !== 'fast') {
+    const { context: userContext } = await getUserContext(user_label);
+    if (userContext) {
+      systemPrompt += '\n\n--- ABOUT THIS USER (from previous sessions) ---\n' + userContext;
+    }
+  }
+
+  if (isAdmin) {
+    if (mode === 'fast') {
+      const commandCenterContext = await getCommandCenterContext('compact');
+      if (commandCenterContext) {
+        systemPrompt += '\n\n' + commandCenterContext;
+      }
+    } else {
+      const commandCenterContext = await getCommandCenterContext('full');
+      if (commandCenterContext) {
+        systemPrompt += '\n\n' + commandCenterContext;
+      }
+
+      const context = await getAdminContext();
+      if (context) {
+        systemPrompt += '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
+      }
+
+      if (messages.length <= 1) {
+        const recentConvos = await getRecentConversations(user_label);
+        if (recentConvos) {
+          systemPrompt += '\n\n--- RECENT MASTERMIND CONVERSATIONS (last 24 hours) ---\nThe user had these earlier conversations with Mastermind today. Reference them naturally if relevant, but do not recite them back unless asked.\n' + recentConvos;
+        }
+      }
+    }
+  }
+
+  let contextLoadMs = Date.now() - contextStartedAt;
+
+  if (mode !== 'fast') {
+    const latestUserMsg = messages[messages.length - 1];
+    if (latestUserMsg && latestUserMsg.role === 'user' && latestUserMsg.content) {
+      const matchedDocs = await getMatchingDocuments(latestUserMsg.content, messages);
+      if (matchedDocs.length > 0) {
+        for (const doc of matchedDocs) {
+          systemPrompt += `\n\n--- REFERENCE DOCUMENT: ${doc.title} ---\nThe user's message matched keywords for this document. Use this content to inform your response. Reference specific details, examples, and numbers from the document when relevant. Do not dump the whole document back at them, but weave the knowledge into your answers naturally.\n\n${doc.content}`;
+        }
+        const markers = matchedDocs.map(d => `[DOC_INJECTED:${d.slug}]`).join('');
+        managedMessages[managedMessages.length - 1] = {
+          ...managedMessages[managedMessages.length - 1],
+          content: managedMessages[managedMessages.length - 1].content + '\n' + markers,
+        };
+      }
+    }
+    contextLoadMs = Date.now() - contextStartedAt;
+  }
+
+  return { mode, provider: 'none', contextLoadMs, managedMessages, systemPrompt, directResponse: null };
+}
+
+function parseHermesCompletion(json) {
+  const content = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.delta?.content || '';
+  const usage = json?.usage || {};
+  return {
+    fullResponse: content,
+    inputTokens: usage.prompt_tokens || 0,
+    outputTokens: usage.completion_tokens || 0,
+    estimatedCost: 0,
+  };
+}
+
+function parseAnthropicCompletion(json) {
+  const content = Array.isArray(json?.content)
+    ? json.content.map(part => part?.text || '').join('')
+    : '';
+  const inputTokens = json?.usage?.input_tokens || 0;
+  const outputTokens = json?.usage?.output_tokens || 0;
+  const estimatedCost = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000);
+  return { fullResponse: content, inputTokens, outputTokens, estimatedCost };
+}
+
+export async function generateChatCompletion(reqBody) {
+  const prepared = await prepareChatRequest(reqBody || {});
+  if (prepared.directResponse !== null) {
+    return {
+      assistant_message: prepared.directResponse,
+      inputTokens: prepared.usage.inputTokens,
+      outputTokens: prepared.usage.outputTokens,
+      estimatedCost: prepared.usage.estimatedCost,
+      provider: prepared.provider,
+      mode: prepared.mode,
+      contextLoadMs: prepared.contextLoadMs,
+    };
+  }
+
+  const hermesConfig = getHermesConfig();
+  let provider = 'anthropic';
+  let response;
+
+  if (hermesConfig.enabled) {
+    provider = 'hermes';
+    try {
+      response = await startHermesCompletion(prepared.systemPrompt, prepared.managedMessages);
+    } catch (e) {
+      console.warn('Hermes brain request failed before completion');
+      if (!hermesConfig.fallbackToAnthropic) {
+        const err = new Error('AI service error');
+        err.statusCode = 502;
+        throw err;
+      }
+      provider = 'anthropic';
+      response = await startAnthropicCompletion(prepared.systemPrompt, prepared.managedMessages);
+    }
+
+    if (provider === 'hermes' && !response.ok) {
+      console.warn('Hermes brain unavailable before completion', { status: response.status });
+      if (!hermesConfig.fallbackToAnthropic) {
+        const err = new Error('AI service error');
+        err.statusCode = 502;
+        throw err;
+      }
+      provider = 'anthropic';
+      response = await startAnthropicCompletion(prepared.systemPrompt, prepared.managedMessages);
+    }
+  } else {
+    response = await startAnthropicCompletion(prepared.systemPrompt, prepared.managedMessages);
+  }
+
+  if (!response.ok) {
+    const err = new Error('AI service error');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  const json = await response.json();
+  const result = provider === 'hermes'
+    ? parseHermesCompletion(json)
+    : parseAnthropicCompletion(json);
+
+  await logMessage(result.inputTokens, result.outputTokens, result.estimatedCost, reqBody?.user_label).catch(console.error);
+
+  return {
+    assistant_message: result.fullResponse.replace('[INTERVIEW_COMPLETE]', '').trim(),
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    estimatedCost: result.estimatedCost,
+    provider,
+    mode: prepared.mode,
+    contextLoadMs: prepared.contextLoadMs,
+  };
 }
 
 async function streamHermesToBrowser(response, res) {

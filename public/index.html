@@ -1404,6 +1404,8 @@ let userScrolledUp = false;
 let lifecycleSuspended = false;
 let resumeNoticePending = false;
 let suppressNextRecognitionSend = false;
+const PENDING_CHAT_JOB_KEY = 'mastermind_pending_chat_job';
+let pendingChatJobId = null;
 
 // ---- ELEMENTS ----
 const loginScreen = document.getElementById('login-screen');
@@ -1724,7 +1726,7 @@ let isNewUser = false;
 document.getElementById('start-btn').addEventListener('click', async () => {
   showScreen('chat-screen');
   sessionStartedAt = new Date();
-  sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  ensureSessionId();
   startTimer();
 
   // Voice enabled for all users - they choose via Read/Listen overlay
@@ -1798,6 +1800,44 @@ function scrollToBottom() {
 function apiFetch(url, options = {}) {
   const headers = { ...options.headers, 'x-session-token': sessionToken };
   return fetch(url, { ...options, headers });
+}
+
+function createClientId(prefix) {
+  if (window.crypto && crypto.randomUUID) return `${prefix}_${crypto.randomUUID()}`;
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function ensureSessionId() {
+  if (sessionId) return sessionId;
+  sessionId = localStorage.getItem('bmad_session_id');
+  if (!sessionId) {
+    sessionId = createClientId('session');
+    localStorage.setItem('bmad_session_id', sessionId);
+  }
+  return sessionId;
+}
+
+function getPendingChatJob() {
+  try {
+    const raw = localStorage.getItem(PENDING_CHAT_JOB_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    localStorage.removeItem(PENDING_CHAT_JOB_KEY);
+    return null;
+  }
+}
+
+function savePendingChatJob(job) {
+  pendingChatJobId = job.job_id;
+  localStorage.setItem(PENDING_CHAT_JOB_KEY, JSON.stringify(job));
+}
+
+function clearPendingChatJob(jobId) {
+  const pending = getPendingChatJob();
+  if (!pending || !jobId || pending.job_id === jobId) {
+    localStorage.removeItem(PENDING_CHAT_JOB_KEY);
+    pendingChatJobId = null;
+  }
 }
 
 function setIdeaStatus(text) {
@@ -1887,7 +1927,7 @@ async function saveIdeaText(text) {
 }
 
 function logConversationExchange(userMessage, assistantMessage) {
-  if (!sessionId) return;
+  ensureSessionId();
 
   apiFetch('/api/conversation-log', {
     method: 'POST',
@@ -2057,6 +2097,7 @@ function restoreSessionFromStorage() {
   sessionToken = localStorage.getItem('bmad_token') || sessionToken;
   userRole = localStorage.getItem('bmad_role') || userRole || 'guest';
   userLabel = localStorage.getItem('bmad_label') || userLabel || 'unknown';
+  ensureSessionId();
   if (sessionToken && loginScreen.classList.contains('active')) {
     updateStartScreen();
     showScreen('start-screen');
@@ -2089,6 +2130,7 @@ function handleLifecycleResume() {
     showToast('Session resumed. Ready when you are.', 'info');
   }
   resumeNoticePending = false;
+  pollPendingChatJob();
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -2102,13 +2144,14 @@ window.addEventListener('pagehide', handleLifecycleBackground);
 window.addEventListener('pageshow', handleLifecycleResume);
 document.addEventListener('freeze', handleLifecycleBackground);
 document.addEventListener('resume', handleLifecycleResume);
+setTimeout(pollPendingChatJob, 500);
 
 async function sendMessageDirect() {
   if (isWaiting) return;
   isWaiting = true;
   sendBtn.disabled = true;
   showThinking();
-  await _streamResponse();
+  await _submitAsyncChatJob();
 }
 
 async function sendMessage() {
@@ -2153,7 +2196,141 @@ async function sendMessage() {
   isWaiting = true;
   sendBtn.disabled = true;
   showThinking();
-  await _streamResponse();
+  await _submitAsyncChatJob();
+}
+
+function completeAssistantResponse(fullText, sourceUserMessage) {
+  const cleaned = String(fullText || '').replace('[INTERVIEW_COMPLETE]', '').trim();
+  if (!cleaned) return false;
+
+  conversationHistory.push({ role: 'assistant', content: cleaned });
+  if (sourceUserMessage) logConversationExchange(sourceUserMessage, cleaned);
+
+  const agentBlocks = parseAgentBlocks(cleaned);
+  updateThinkingStage('done');
+  removeThinking();
+
+  if (!hasChosenMode) {
+    pendingAgentBlocks = agentBlocks;
+    document.getElementById('voice-choice').classList.add('active');
+  } else {
+    displayAgentBlocks(agentBlocks);
+    if (voiceEnabled) playAgentAudio(agentBlocks);
+  }
+
+  return true;
+}
+
+async function pollPendingChatJob() {
+  const pending = getPendingChatJob();
+  if (!pending || !pending.job_id || !sessionToken) return;
+  if (pendingChatJobId && pendingChatJobId !== pending.job_id) return;
+
+  pendingChatJobId = pending.job_id;
+  if (chatScreen.classList.contains('active') && !document.getElementById('thinking')) {
+    showThinking();
+    updateThinkingStage('streaming');
+    updateThinkingText('Mastermind is still working. You can leave and come back.');
+  }
+
+  try {
+    const response = await apiFetch(`/api/chat-job?job_id=${encodeURIComponent(pending.job_id)}`);
+    if (!response.ok) return;
+
+    const job = await response.json();
+    if (job.status === 'completed') {
+      completeAssistantResponse(job.assistant_message, pending.user_message || '');
+      clearPendingChatJob(job.job_id);
+      isWaiting = false;
+      sendBtn.disabled = false;
+      saveIdeaBtn.disabled = false;
+      return;
+    }
+
+    if (job.status === 'failed') {
+      removeThinking();
+      showToast(job.error || 'Mastermind could not finish that request. Please retry.', 'error');
+      clearPendingChatJob(job.job_id);
+      isWaiting = false;
+      sendBtn.disabled = false;
+      saveIdeaBtn.disabled = false;
+      return;
+    }
+
+    updateThinkingText('Mastermind is still working. You can leave and come back.');
+    setTimeout(pollPendingChatJob, 2500);
+  } catch (e) {
+    setTimeout(pollPendingChatJob, 4000);
+  }
+}
+
+async function _submitAsyncChatJob() {
+  const lastUserMsg = [...conversationHistory].reverse().find(m => m.role === 'user');
+  const jobId = createClientId('job');
+  const pending = {
+    job_id: jobId,
+    session_id: ensureSessionId(),
+    user_label: userLabel,
+    user_message: lastUserMsg ? lastUserMsg.content : '',
+    created_at: new Date().toISOString(),
+  };
+  savePendingChatJob(pending);
+  updateThinkingText('Mastermind is working. You can leave and come back.');
+
+  try {
+    const response = await apiFetch('/api/chat-job', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        job_id: jobId,
+        session_id: ensureSessionId(),
+        messages: conversationHistory,
+        user_label: userLabel,
+      }),
+    });
+
+    if (response.status === 429) {
+      const err = await response.json();
+      removeThinking();
+      showRateLimit(err.error);
+      clearPendingChatJob(jobId);
+      isWaiting = false;
+      sendBtn.disabled = false;
+      return;
+    }
+
+    if (!response.ok) {
+      const err = await response.json();
+      removeThinking();
+      showToast(err.error || 'Something went wrong', 'error');
+      clearPendingChatJob(jobId);
+      isWaiting = false;
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const job = await response.json();
+    if (job.status === 'completed') {
+      completeAssistantResponse(job.assistant_message, pending.user_message);
+      clearPendingChatJob(job.job_id);
+    } else if (job.status === 'failed') {
+      removeThinking();
+      showToast(job.error || 'Mastermind could not finish that request. Please retry.', 'error');
+      clearPendingChatJob(job.job_id);
+    } else {
+      updateThinkingText('Mastermind is still working. You can leave and come back.');
+      setTimeout(pollPendingChatJob, 2500);
+      return;
+    }
+  } catch (err) {
+    showToast('Mastermind is still working. I will check when you return.', 'info');
+    setTimeout(pollPendingChatJob, 4000);
+    return;
+  }
+
+  isWaiting = false;
+  sendBtn.disabled = false;
+  saveIdeaBtn.disabled = false;
 }
 
 async function _streamResponse() {
@@ -2698,6 +2875,9 @@ function doLogout() {
   localStorage.removeItem('bmad_token');
   localStorage.removeItem('bmad_role');
   localStorage.removeItem('bmad_label');
+  localStorage.removeItem('bmad_session_id');
+  localStorage.removeItem(PENDING_CHAT_JOB_KEY);
+  pendingChatJobId = null;
   conversationHistory = [];
   sessionCost = 0;
   totalInputTokens = 0;
