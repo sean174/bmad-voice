@@ -1,13 +1,13 @@
-const SYSTEM_PROMPT = `You are CEO Coach, Sean's focused operating coach for Elevated Advisor and Command Center.
+const SYSTEM_PROMPT = `You are Mastermind, Sean's single strategic voice interface for Command Center with a CEO coach layer for Elevated Advisor.
 
 Identity:
-- Your name is CEO Coach.
+- Your name is Mastermind.
 - Sean runs Elevated Advisor, a done-for-you lead generation business for independent financial advisors.
 - You are fast, strategic, direct, and filtered through CEO-level leverage.
 - You advise like an operating coach who understands sales, delivery, delegation, positioning, systems, and execution.
 - You are not a generic motivational coach. Do not drift into affirmation, therapy, vague encouragement, or productivity platitudes.
 
-CEO Coach operating rules:
+Mastermind CEO coach layer operating rules:
 - Anchor to Command Center, current business context, 90-day goals, active operations, blockers, pending decisions, and recent ideas when that context is available.
 - Challenge off-track ideas against the 90-day goals and the highest leverage path for Elevated Advisor.
 - Push delegation, offloading, automation, or stopping work before recommending that Sean personally executes more tasks.
@@ -338,7 +338,7 @@ async function getRecentConversations(userLabel) {
         // Truncate long messages to keep prompt manageable
         const userSnippet = msg.user_message.length > 200 ? msg.user_message.slice(0, 200) + '...' : msg.user_message;
         const assistSnippet = msg.assistant_message.length > 300 ? msg.assistant_message.slice(0, 300) + '...' : msg.assistant_message;
-        summary += `  User: ${userSnippet}\n  CEO Coach: ${assistSnippet}\n`;
+        summary += `  User: ${userSnippet}\n  Mastermind: ${assistSnippet}\n`;
       }
     }
 
@@ -521,16 +521,16 @@ function getHermesConfig() {
 }
 
 function buildHermesSystemMessage(systemPrompt) {
-  return `You are Hermes Agent acting as the CEO Coach voice interface.
+  return `You are Hermes Agent acting as the Mastermind voice interface with a CEO coach layer.
 
 Phase 1 safety constraints:
 - Phase 1 is read-only mode.
-- Allowed write: capture ideas only through the existing Ideas endpoint/UI, not through arbitrary tool actions.
+- Allowed write: capture ideas only through the existing Mastermind Ideas endpoint/UI, not through arbitrary tool actions.
 - Do not mutate Command Center projects, operations, decisions, delegations, or instructions.
 - Do not execute business-system changes, deployments, commits, pushes, GHL/SMS/Slack/Google/Asana/Vercel actions, or filesystem changes from voice requests.
 - If the user requests an action, produce a plan or ask for approval, but do not do it.
 
-Existing CEO Coach instructions and context:
+Existing Mastermind instructions and context:
 ${systemPrompt}`;
 }
 
@@ -558,7 +558,7 @@ function getIdeaCommandText(text) {
     'note\\s+this\\s+idea',
   ].join('|');
   const politePrefix = '(?:(?:please|hey|ok|okay)\\s+)*(?:(?:can|could|will)\\s+you\\s+)?(?:please\\s+)?';
-  const separator = '(?:\\s*[:.,\\-–—]\\s*|\\s+)';
+  const separator = '(?:\\s*[:.,\\-\\u2013\\u2014]\\s*|\\s+)';
   const match = text.match(new RegExp(`^\\s*${politePrefix}(?:${commandPattern})${separator}([\\s\\S]+)$`, 'i'));
   if (!match) return '';
 
@@ -838,7 +838,7 @@ export default async function handler(req, res) {
     systemPrompt += '\n\n' + OPERATOR_PROMPT;
   }
 
-  // Tell CEO Coach who it is talking to
+  // Tell Mastermind who it is talking to
   if (user_label && user_label !== 'unknown') {
     const displayName = user_label.charAt(0).toUpperCase() + user_label.slice(1);
     systemPrompt += `\n\nThe user's name is ${displayName}. Use their name naturally in conversation. Not every response, but enough that it feels personal.`;
@@ -846,7 +846,7 @@ export default async function handler(req, res) {
 
   if (mode === 'fast' && isFastModeEscalationRequest(latestUserText)) {
     writeSseHeaders(res);
-    const message = 'That needs Operator/Codex mode. I can outline the next step here, but this read-only Coach Mode path will not change files, deploy, debug, or execute operations.';
+    const message = 'That needs Operator/Codex mode. I can outline the next step here, but this read-only Mastermind path will not change files, deploy, debug, or execute operations.';
     writeTextChunk(res, message);
     writeDoneChunk(res, 0, 0, 0);
     console.info('Chat timing', {
@@ -887,11 +887,11 @@ export default async function handler(req, res) {
         systemPrompt += '\n\n--- BUSINESS CONTEXT (confidential, for this user only) ---\n' + context;
       }
 
-      // Inject recent conversations so CEO Coach has continuity
+      // Inject recent conversations so Mastermind has continuity
       if (messages.length <= 1) {
         const recentConvos = await getRecentConversations(user_label);
         if (recentConvos) {
-          systemPrompt += '\n\n--- RECENT CEO COACH CONVERSATIONS (last 24 hours) ---\nThe user had these earlier conversations with CEO Coach today. Reference them naturally if relevant, but do not recite them back unless asked.\n' + recentConvos;
+          systemPrompt += '\n\n--- RECENT MASTERMIND CONVERSATIONS (last 24 hours) ---\nThe user had these earlier conversations with Mastermind today. Reference them naturally if relevant, but do not recite them back unless asked.\n' + recentConvos;
         }
       }
     }

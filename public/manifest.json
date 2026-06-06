@@ -1,11 +1,11 @@
 {
-  "name": "CEO Coach",
-  "short_name": "CEO Coach",
+  "name": "Mastermind",
+  "short_name": "Mastermind",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080808",
   "theme_color": "#080808",
-  "description": "Voice-powered CEO operating coach for Elevated Advisor",
+  "description": "Voice-powered AI mastermind with your team",
   "icons": [
     {
       "src": "/icons/icon-192.png",

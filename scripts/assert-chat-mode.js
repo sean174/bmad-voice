@@ -26,7 +26,8 @@ this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;`, co
   filename: chatPath,
 });
 
-assert(context.SYSTEM_PROMPT.includes('You are CEO Coach'));
+assert(context.SYSTEM_PROMPT.includes('You are Mastermind'));
+assert(context.SYSTEM_PROMPT.includes('CEO coach layer'));
 assert(context.SYSTEM_PROMPT.includes('Elevated Advisor'));
 assert(context.SYSTEM_PROMPT.includes('90-day goals'));
 assert(context.SYSTEM_PROMPT.includes('Push delegation'));
@@ -34,7 +35,7 @@ assert(context.SYSTEM_PROMPT.includes('Ideas capture is the only allowed write p
 assert(context.SYSTEM_PROMPT.includes('You cannot create tasks, update Asana, update Command Center projects'));
 
 const hermesSystem = context.buildHermesSystemMessage('test prompt');
-assert(hermesSystem.includes('CEO Coach voice interface'));
+assert(hermesSystem.includes('Mastermind voice interface with a CEO coach layer'));
 assert(hermesSystem.includes('Do not mutate Command Center projects, operations, decisions, delegations, or instructions.'));
 assert(hermesSystem.includes('GHL/SMS/Slack/Google/Asana/Vercel'));
 
