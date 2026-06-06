@@ -1,0 +1,35 @@
+id: weekly-ceo-review
+type: workflow
+product: Mastermind
+status: draft
+cadence: weekly
+goal: >
+  Help Sean review Elevated Advisor as the owner, identify leverage,
+  clear roadblocks, make decisions, and set a focused week without
+  creating external mutations from chat.
+
+steps:
+  - id: scorecard
+    prompt: "What changed in pipeline, sales, delivery, margin, team capacity, and client outcomes?"
+    output: "current business read"
+  - id: wins
+    prompt: "What worked and should be repeated or systemized?"
+    output: "repeatable wins"
+  - id: blockers
+    prompt: "What is stuck, waiting, unclear, or avoided?"
+    output: "roadblock list with owners"
+  - id: decisions
+    prompt: "Which decisions only Sean can make this week?"
+    output: "decision draft list"
+  - id: delegation
+    prompt: "What should Sean delegate, automate, stop, park, or defer?"
+    output: "delegation and offloading draft list"
+  - id: focus
+    prompt: "What are the 1 to 3 highest leverage activities for the week?"
+    output: "weekly focus"
+
+guardrails:
+  - "Mastermind stays read-only."
+  - "Ideas capture is the only write path."
+  - "All decisions, delegations, and handoffs are drafts only."
+  - "Do not update Command Center, Asana, GHL, Slack, Google, Vercel, SMS, or any business system."

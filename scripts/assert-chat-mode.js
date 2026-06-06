@@ -31,12 +31,18 @@ assert(context.SYSTEM_PROMPT.includes('CEO coach layer'));
 assert(context.SYSTEM_PROMPT.includes('Elevated Advisor'));
 assert(context.SYSTEM_PROMPT.includes('90-day goals'));
 assert(context.SYSTEM_PROMPT.includes('Push delegation'));
+assert(context.SYSTEM_PROMPT.includes('Mastermind Business Owner Pack'));
+assert(context.SYSTEM_PROMPT.includes('strategy-filter'));
+assert(context.SYSTEM_PROMPT.includes('roadblock-unblocker'));
+assert(context.SYSTEM_PROMPT.includes('highest-leverage-activity'));
 assert(context.SYSTEM_PROMPT.includes('Ideas capture is the only allowed write path.'));
 assert(context.SYSTEM_PROMPT.includes('You cannot create tasks, update Asana, update Command Center projects'));
 
 const hermesSystem = context.buildHermesSystemMessage('test prompt');
 assert(hermesSystem.includes('Mastermind voice interface with a CEO coach layer'));
 assert(hermesSystem.includes('Do not mutate Command Center projects, operations, decisions, delegations, or instructions.'));
+assert(hermesSystem.includes('Decision and delegation handoffs are draft text only.'));
+assert(hermesSystem.includes('Mastermind Business Owner Pack modules'));
 assert(hermesSystem.includes('GHL/SMS/Slack/Google/Asana/Vercel'));
 
 assert.strictEqual(context.resolveRequestMode({}, 'what should I focus on today?'), 'fast');
