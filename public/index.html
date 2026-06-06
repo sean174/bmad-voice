@@ -1401,6 +1401,9 @@ let abortController = null;
 let isWaiting = false;
 let timerInterval = null;
 let userScrolledUp = false;
+let lifecycleSuspended = false;
+let resumeNoticePending = false;
+let suppressNextRecognitionSend = false;
 
 // ---- ELEMENTS ----
 const loginScreen = document.getElementById('login-screen');
@@ -1957,6 +1960,7 @@ if (SpeechRecognition && !isIOS) {
   let preExistingText = '';
 
   recognition.onresult = (event) => {
+    if (lifecycleSuspended) return;
     let interim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const t = event.results[i][0].transcript;
@@ -1972,6 +1976,12 @@ if (SpeechRecognition && !isIOS) {
   };
 
   recognition.onend = () => {
+    if (suppressNextRecognitionSend || lifecycleSuspended) {
+      suppressNextRecognitionSend = false;
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      return;
+    }
     if (isRecording) {
       // Auto-stopped (silence, etc.) - send if we have text
       isRecording = false;
@@ -1988,6 +1998,7 @@ if (SpeechRecognition && !isIOS) {
     }
     isRecording = false;
     micBtn.classList.remove('recording');
+    suppressNextRecognitionSend = false;
   };
 
   micBtn.addEventListener('click', () => {
@@ -2018,6 +2029,79 @@ if (SpeechRecognition && !isIOS) {
     }
   });
 }
+
+// ---- MOBILE/PWA LIFECYCLE RECOVERY ----
+function stopSpeechRecognitionForLifecycle() {
+  suppressNextRecognitionSend = true;
+  isRecording = false;
+  micBtn.classList.remove('recording');
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (e) {}
+  }
+}
+
+function resetStuckUiAfterLifecycle() {
+  removeThinking();
+  isWaiting = false;
+  sendBtn.disabled = false;
+  saveIdeaBtn.disabled = false;
+  micBtn.classList.remove('recording');
+  showStopButton(false);
+  speakingLabel.style.display = 'none';
+  chatArea.querySelectorAll('.speaking').forEach(el => el.classList.remove('speaking'));
+}
+
+function restoreSessionFromStorage() {
+  sessionToken = localStorage.getItem('bmad_token') || sessionToken;
+  userRole = localStorage.getItem('bmad_role') || userRole || 'guest';
+  userLabel = localStorage.getItem('bmad_label') || userLabel || 'unknown';
+  if (sessionToken && loginScreen.classList.contains('active')) {
+    updateStartScreen();
+    showScreen('start-screen');
+  }
+}
+
+function handleLifecycleBackground() {
+  lifecycleSuspended = true;
+  resumeNoticePending = true;
+  stopSpeechRecognitionForLifecycle();
+  stopAudio();
+  if (abortController) {
+    try {
+      abortController.abort();
+    } catch (e) {}
+    abortController = null;
+  }
+  resetStuckUiAfterLifecycle();
+}
+
+function handleLifecycleResume() {
+  restoreSessionFromStorage();
+  lifecycleSuspended = false;
+  suppressNextRecognitionSend = false;
+  abortController = null;
+  isRecording = false;
+  isPlaying = false;
+  resetStuckUiAfterLifecycle();
+  if (resumeNoticePending && chatScreen.classList.contains('active')) {
+    showToast('Session resumed. Ready when you are.', 'info');
+  }
+  resumeNoticePending = false;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    handleLifecycleBackground();
+  } else {
+    handleLifecycleResume();
+  }
+});
+window.addEventListener('pagehide', handleLifecycleBackground);
+window.addEventListener('pageshow', handleLifecycleResume);
+document.addEventListener('freeze', handleLifecycleBackground);
+document.addEventListener('resume', handleLifecycleResume);
 
 async function sendMessageDirect() {
   if (isWaiting) return;
@@ -2200,10 +2284,13 @@ async function _streamResponse() {
       removeThinking();
       showToast('Connection error', 'error');
     }
+  } finally {
+    abortController = null;
   }
 
   isWaiting = false;
   sendBtn.disabled = false;
+  saveIdeaBtn.disabled = false;
 }
 
 // ---- PARSE MASTERMIND ----
