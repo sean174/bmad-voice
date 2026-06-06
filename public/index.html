@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Mastermind</title>
+  <title>CEO Coach</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1216,9 +1216,9 @@
 <!-- SCREEN 1: LOGIN -->
 <div id="login-screen" class="screen active">
   <div class="login-fade" data-fade="0"><img src="/icons/icon-192.png" alt="" style="width:120px; height:120px; margin-bottom:-4px; border-radius:12px;"></div>
-  <div class="login-fade" data-fade="1"><span class="section-label" style="font-size:15px; letter-spacing:6px;">Mastermind</span></div>
+  <div class="login-fade" data-fade="1"><span class="section-label" style="font-size:15px; letter-spacing:6px;">CEO Coach</span></div>
   <div class="login-fade" data-fade="2"><h1 class="headline" style="margin-bottom:4px;">Welcome back.</h1></div>
-  <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Command Center is ready.</p></div>
+  <div class="login-fade" data-fade="3"><p class="subtext" style="margin-top:0; margin-bottom:0;">Coach Mode is ready.</p></div>
   <div class="login-fade" data-fade="4" style="margin-top:24px;"><span class="section-label" style="font-size:18px; letter-spacing:6px; color:var(--red);">Invitation Only</span></div>
   <div class="login-fade" data-fade="5" style="margin-top:16px;">
     <!-- Login form -->
@@ -1250,9 +1250,9 @@
 
 <!-- SCREEN 2: START SESSION -->
 <div id="start-screen" class="screen">
-  <span class="section-label">Mastermind</span>
+  <span class="section-label">CEO Coach</span>
   <h1 class="headline">Ready when<br>you are.</h1>
-  <p class="subtext" id="last-session-text">Start a read-only Command Center session.</p>
+  <p class="subtext" id="last-session-text">Start a read-only Coach Mode session.</p>
   <button id="start-btn" class="btn-primary">Start Session</button>
   <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
 </div>
@@ -1261,7 +1261,7 @@
 <div id="chat-screen" class="screen">
   <div id="header">
     <div id="header-left">
-      <div id="header-title">Mastermind</div>
+      <div id="header-title">CEO Coach</div>
       <div id="header-stats">
         <div id="session-cost">$0.00</div>
         <div id="session-timer">00:00</div>
@@ -1310,7 +1310,7 @@
   </div>
 
   <div id="voice-choice">
-    <h2>Mastermind is ready.</h2>
+    <h2>CEO Coach is ready.</h2>
     <div class="choice-buttons">
       <button class="choice-btn" id="choice-read">
         <span class="choice-icon">&#9776;</span>
@@ -1366,11 +1366,11 @@ const AGENT_COLORS = {
 };
 
 const AGENT_DISPLAY = {
-  MASTERMIND: 'Mastermind',
+  MASTERMIND: 'CEO Coach',
 };
 
 const AGENT_ROLES = {
-  MASTERMIND: 'Command Center',
+  MASTERMIND: 'Coach Mode',
 };
 
 const AGENT_AVATARS = {
@@ -1536,14 +1536,14 @@ document.getElementById('login-form').addEventListener('submit', async () => {
   loginBtn.textContent = 'Sign In';
 });
 
-// ---- MASTERMIND INTRO (hardcoded, no API call) ----
+// ---- COACH MODE INTRO (hardcoded, no API call) ----
 function showMastermindIntro() {
   const card = document.createElement('div');
   card.className = 'prompt-card';
 
   card.innerHTML = `
-    <div class="prompt-headline">Mastermind is online.</div>
-    <div class="prompt-body">One fast strategic voice for Command Center. Read-only testing is active, so I can advise, draft, and park ideas here, but I will not change business systems.</div>
+    <div class="prompt-headline">CEO Coach is online.</div>
+    <div class="prompt-body">A fast operating coach for Elevated Advisor. Read-only testing is active, so I can advise, challenge, draft, and park ideas here, but I will not change business systems.</div>
     <div class="prompt-body">Session transcripts can be saved and downloaded so you can keep the context moving.</div>
   `;
 
@@ -1557,14 +1557,14 @@ function showSuggestedPrompts() {
   card.id = 'prompt-card';
 
   card.innerHTML = `
-    <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use Mastermind:</div>
+    <div class="prompt-body" style="font-weight:700; color:var(--text);">A few ways to use CEO Coach:</div>
     <ul class="prompt-uses">
-      <li>Think through your business strategy and positioning</li>
-      <li>Find where AI tools would give you the most leverage</li>
-      <li>Shape custom app ideas before you build</li>
-      <li>Get your systems talking to each other</li>
-      <li>Analyze data and spot patterns you're missing</li>
-      <li>Park ideas in this conversation for later review</li>
+      <li>Pressure test strategy against the 90-day goals</li>
+      <li>Find the highest leverage next action</li>
+      <li>Decide what only Sean should own</li>
+      <li>Push execution to delegation, systems, or offloading</li>
+      <li>Identify what to stop, park, or defer</li>
+      <li>Park ideas for later review</li>
     </ul>
   `;
 
@@ -1575,10 +1575,10 @@ function showSuggestedPrompts() {
   card.appendChild(orLabel);
 
   const prompts = [
-    "Find the biggest automation opportunities in my business",
-    "Help me think through my business model",
+    "What is the highest leverage thing I should do today?",
+    "Pressure test this against my 90-day goals:",
     "Park this idea for later review:",
-    "Where would custom-built tools give me the most leverage?",
+    "What should I delegate or stop doing this week?",
   ];
 
   for (const p of prompts) {
@@ -1612,12 +1612,12 @@ function showSuggestedPrompts() {
 
 // ---- QUICK TOUR ----
 const TOUR_STEPS = [
-  { fullscreen: true, headline: "Welcome to Mastermind.", text: 'You now have one fast strategic voice for Command Center. Mastermind can advise, draft, challenge assumptions, and park ideas in this conversation.<br><br>Read-only testing is active. Mastermind will not create tasks, write to Asana, send messages, or change business systems.<br><br>Describe what you are working on and Mastermind will get to work.', btnText: "Let's Go" },
+  { fullscreen: true, headline: "Welcome to CEO Coach.", text: 'You now have a fast operating coach for Elevated Advisor. CEO Coach can pressure test strategy, challenge assumptions, identify leverage, and park ideas in this conversation.<br><br>Read-only testing is active. CEO Coach will not create tasks, write to Asana, send messages, mutate Command Center, or change business systems.<br><br>Describe the challenge, decision, or roadblock and CEO Coach will get to work.', btnText: "Let's Go" },
   { fullscreen: true, headline: "Let's take a quick tour.", text: 'This will only take a moment.', btnText: 'Next' },
-  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear Mastermind speak.', position: 'below', voiceOnly: true },
+  { target: '.voice-toggle-pill', text: 'Toggle voice on to hear CEO Coach speak.', position: 'below', voiceOnly: true },
   { target: '#end-session-btn', text: 'Hit End when you\'re done. You\'ll get the option to download a summary of your session.', position: 'below' },
-  { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to Mastermind.' : 'Type here, or tap the mic button to talk to Mastermind.', position: 'above' },
-  { fullscreen: true, headline: "All done.", text: "Mastermind is ready.", btnText: 'Start' },
+  { target: '#message-input', text: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'Type or dictate here to talk to CEO Coach.' : 'Type here, or tap the mic button to talk to CEO Coach.', position: 'above' },
+  { fullscreen: true, headline: "All done.", text: "CEO Coach is ready.", btnText: 'Start' },
 ];
 
 let tourStep = 0;
@@ -2166,7 +2166,7 @@ async function _streamResponse() {
 
     if (!fullText) {
       removeThinking();
-      showToast('Mastermind did not return a response. Please try again.', 'error');
+      showToast('CEO Coach did not return a response. Please try again.', 'error');
       isWaiting = false;
       sendBtn.disabled = false;
       return;
@@ -2206,7 +2206,7 @@ async function _streamResponse() {
   sendBtn.disabled = false;
 }
 
-// ---- PARSE MASTERMIND ----
+// ---- PARSE COACH RESPONSE ----
 function parseAgentBlocks(text) {
   const cleaned = text
     .replace(/\[(ANALYST|PM|ARCHITECT|DEVELOPER|STRATEGIST|PROBLEM_SOLVER|BRAINSTORM_COACH|STORYTELLER|MASTERMIND)\]:\s*/g, '')
@@ -2214,7 +2214,7 @@ function parseAgentBlocks(text) {
   return [{ agent: 'MASTERMIND', text: cleaned }];
 }
 
-// ---- DISPLAY MASTERMIND ----
+// ---- DISPLAY COACH RESPONSE ----
 function displayAgentBlocks(blocks) {
   for (const block of blocks) {
     const div = document.createElement('div');
@@ -2418,7 +2418,7 @@ function showThinking() {
   const status = document.createElement('div');
   status.className = 'progress-status';
   status.id = 'progress-status';
-  status.textContent = 'Calling Mastermind...';
+  status.textContent = 'Calling CEO Coach...';
 
   const track = document.createElement('div');
   track.className = 'progress-bar-track';
@@ -2450,7 +2450,7 @@ function showThinking() {
   // Stage 2: after a beat
   setTimeout(() => {
     if (document.getElementById('progress-status')) {
-      document.getElementById('progress-status').textContent = 'Hermes is thinking...';
+      document.getElementById('progress-status').textContent = 'Coach is thinking...';
       fill.style.width = '35%';
     }
   }, 800);
@@ -2684,7 +2684,7 @@ document.getElementById('end-download').addEventListener('click', async () => {
 
   // Generate AI summary
   try {
-    const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this mastermind session including:
+    const wrapPrompt = `You are a professional meeting note taker. Create a structured summary of this CEO Coach session including:
 
 1. Executive Summary (3 to 5 bullet points of the most important outcomes)
 2. Key Insights and Decisions Made
@@ -2795,7 +2795,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
 
   function buildSessionContent() {
     const lines = [
-      `# Mastermind Session\n`,
+      `# CEO Coach Session\n`,
       `**Date:** ${new Date().toLocaleDateString()}\n`,
       `---\n`,
       `## Summary\n`,
@@ -2807,7 +2807,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
       if (msg.role === 'user') {
         lines.push(`### You\n${msg.content}\n`);
       } else {
-        lines.push(`### Mastermind\n${msg.content}\n`);
+        lines.push(`### CEO Coach\n${msg.content}\n`);
       }
     }
     return lines.join('\n');
@@ -2841,7 +2841,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mastermind-${new Date().toISOString().slice(0,10)}.md`;
+    a.download = `ceo-coach-${new Date().toISOString().slice(0,10)}.md`;
     a.click();
     URL.revokeObjectURL(url);
     startLogoutCountdown();
@@ -2860,7 +2860,7 @@ Format as a concise bullet list. Only include facts, not opinions. Keep it under
       .replace(/\n\n/g, '<br><br>')
       .replace(/\n/g, '<br>');
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Mastermind Session</title><style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#222;font-size:14px;line-height:1.6;}@media print{body{margin:20px;}}</style></head><body>${htmlContent}</body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>CEO Coach Session</title><style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#222;font-size:14px;line-height:1.6;}@media print{body{margin:20px;}}</style></head><body>${htmlContent}</body></html>`);
     printWindow.document.close();
     printWindow.print();
     startLogoutCountdown();

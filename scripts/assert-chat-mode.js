@@ -18,11 +18,25 @@ const context = {
 };
 
 vm.runInNewContext(`${source}
+this.SYSTEM_PROMPT = SYSTEM_PROMPT;
+this.buildHermesSystemMessage = buildHermesSystemMessage;
 this.resolveRequestMode = resolveRequestMode;
 this.isFastModeEscalationRequest = isFastModeEscalationRequest;
 this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;`, context, {
   filename: chatPath,
 });
+
+assert(context.SYSTEM_PROMPT.includes('You are CEO Coach'));
+assert(context.SYSTEM_PROMPT.includes('Elevated Advisor'));
+assert(context.SYSTEM_PROMPT.includes('90-day goals'));
+assert(context.SYSTEM_PROMPT.includes('Push delegation'));
+assert(context.SYSTEM_PROMPT.includes('Ideas capture is the only allowed write path.'));
+assert(context.SYSTEM_PROMPT.includes('You cannot create tasks, update Asana, update Command Center projects'));
+
+const hermesSystem = context.buildHermesSystemMessage('test prompt');
+assert(hermesSystem.includes('CEO Coach voice interface'));
+assert(hermesSystem.includes('Do not mutate Command Center projects, operations, decisions, delegations, or instructions.'));
+assert(hermesSystem.includes('GHL/SMS/Slack/Google/Asana/Vercel'));
 
 assert.strictEqual(context.resolveRequestMode({}, 'what should I focus on today?'), 'fast');
 assert.strictEqual(context.resolveRequestMode({ mode: 'fast' }, 'review the files'), 'fast');
