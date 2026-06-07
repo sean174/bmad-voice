@@ -40,6 +40,7 @@ assert(context.SYSTEM_PROMPT.includes('roadblock-unblocker'));
 assert(context.SYSTEM_PROMPT.includes('highest-leverage-activity'));
 assert(context.SYSTEM_PROMPT.includes('Ideas capture is the only allowed write path.'));
 assert(context.SYSTEM_PROMPT.includes('You cannot create tasks, update Asana, update Command Center projects'));
+assert(context.SYSTEM_PROMPT.includes('When live Command Center context is present, do not say you lack the full operational picture.'));
 
 const hermesSystem = context.buildHermesSystemMessage('test prompt');
 assert(hermesSystem.includes('Mastermind voice interface with a CEO coach layer'));
@@ -64,23 +65,36 @@ const compact = context.formatCompactCommandCenterContext({
     sources: [{ name: 'Projects DB', updated_at: '2026-06-04T12:00:00Z' }],
     source_timestamps: { projects: '2026-06-04T12:00:00Z' },
     kpi_headlines: { revenue: '$1' },
+    current_priorities: [{ title: '90-day pipeline goal', summary: 'Fill the advisor pipeline' }],
+    projects_sorted_by_rank: [{ title: 'Ranked Pipeline Project', rank: 1, summary: 'Highest leverage project' }],
     top_projects: [{ title: 'Enrollment Sprint', priority: 'P1', summary: 'Fill advisor pipeline' }],
     blockers: [{ title: 'Blocked launch', blocked_on: 'approval' }],
     pending_decisions: [{ title: 'Choose offer', question: 'A or B?' }],
     active_operations: [{ title: 'Launch', status: 'active' }],
+    recent_dashboard_events: [{ title: 'Dashboard refreshed', summary: 'New reply quality signal' }],
+    tools_context: { asana: 'read-only', ghl: 'read-only' },
     newest_ideas: [{ text: 'Fast briefing' }],
-    business_context_docs: [{ title: 'Should not be included', content: 'nope' }],
+    business_context_docs: [{ title: 'Operating Brief', excerpt: 'Elevated Advisor serves independent financial advisors.' }],
   },
 });
 
 assert(compact.includes('generated_at: 2026-06-05T00:00:00Z'));
 assert(compact.includes('sources:'));
 assert(compact.includes('source_timestamps:'));
+assert(compact.includes('current_priorities:'));
+assert(compact.includes('90-day pipeline goal'));
+assert(compact.includes('projects_sorted_by_rank:'));
+assert(compact.includes('Ranked Pipeline Project'));
 assert(compact.includes('top_projects:'));
 assert(compact.includes('Enrollment Sprint'));
+assert(compact.includes('recent_dashboard_events:'));
+assert(compact.includes('Dashboard refreshed'));
+assert(compact.includes('tools_context:'));
+assert(compact.includes('asana: read-only'));
 assert(compact.includes('newest_ideas:'));
-assert(!compact.includes('business_context_docs_excerpts'));
-assert(compact.length <= 8000);
+assert(compact.includes('business_context_docs_excerpts:'));
+assert(compact.includes('Operating Brief'));
+assert(compact.length <= 12000);
 
 const full = context.formatCommandCenterContext({
   data: {
@@ -92,9 +106,13 @@ const full = context.formatCommandCenterContext({
       active_operations: [{ name: 'Outbound System', status: 'running', next_step: 'Review reply quality' }],
       blockers: [{ name: 'Calendar Show Rate', blocked_on: 'appointment quality' }],
       pending_decisions: [{ name: 'Offer Packaging', question: 'Keep premium tier?' }],
+      recent_dashboard_events: [{ name: 'Dashboard Event', summary: 'Pipeline status changed' }],
       recent_ideas: [{ text: 'Build pre-call proof packet', source: 'Mastermind' }],
       source_timestamps: { ghl: '2026-06-06T09:00:00Z', asana: '2026-06-06T08:30:00Z' },
     },
+    current_priorities: [{ name: '90-day Goal', summary: 'Grow qualified appointments' }],
+    projects_sorted_by_rank: [{ name: 'Ranked Advisor Pipeline', rank: 1, summary: 'Primary project' }],
+    tools_context: { command_center_bridge: 'read-only available' },
     metrics: { booked_calls: 12, cash_collected: '$42k', access_token: 'ghp_abcdefghijklmnopqrstuvwxyz123456' },
     sources: [{ title: 'Command Center Snapshot', updated_at: '2026-06-06T09:30:00Z', path: '/readonly/snapshot' }],
     business_context_docs: [
@@ -111,6 +129,10 @@ for (const value of [
   'scope: full-business',
   'sources:',
   'source_timestamps:',
+  'current_priorities:',
+  '90-day Goal',
+  'projects_sorted_by_rank:',
+  'Ranked Advisor Pipeline',
   'top_projects:',
   'Advisor Pipeline',
   'active_operations:',
@@ -119,10 +141,14 @@ for (const value of [
   'Calendar Show Rate',
   'pending_decisions:',
   'Offer Packaging',
+  'recent_dashboard_events:',
+  'Dashboard Event',
   'recent_ideas:',
   'Build pre-call proof packet',
   'kpi_headlines:',
   'booked_calls: 12',
+  'tools_context:',
+  'command_center_bridge: read-only available',
   'access_token: [redacted]',
   'business_context_docs_excerpts:',
   'Elevated Advisor Operating Brief',

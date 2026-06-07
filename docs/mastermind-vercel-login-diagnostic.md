@@ -13,6 +13,7 @@ This report covers the old Vercel Mastermind app at `mastermind.seanthomas.com` 
 - `https://mastermind.seanthomas.com/?reset=1` is a public browser/PWA recovery URL. It clears `localStorage` and `sessionStorage`, then redirects to `/` with cache-busting query parameters so iOS Safari or an installed PWA has to request the current app shell.
 - Vercel sends `Cache-Control: no-store, max-age=0` for `/`, `/index.html`, and `/manifest.json`. Icons and other static assets remain cacheable.
 - `api/chat.js` fetches Command Center context server-side from `COMMAND_CENTER_CONTEXT_URL` with `MASTERMIND_BRIDGE_TOKEN`.
+- Fast mode also uses that protected server-side bridge. Its prompt receives a compact live snapshot with current priorities, ranked/top projects, active operations, blockers, pending decisions, KPI headlines, recent dashboard events, tools context, newest ideas, and concise business doc excerpts.
 - `api/chat.js` and `api/ideas.js` use `MASTERMIND_BRIDGE_TOKEN` server-side for Ideas capture.
 - The browser bundle does not reference Command Center bridge URLs or bridge/Hermes/Vercel/dashboard secret env names.
 - Middleware protects `/api/chat`, `/api/chat-job`, `/api/ideas`, `/api/speak`, `/api/usage`, `/api/user-context`, and conversation endpoints with `x-session-token`.
@@ -40,6 +41,7 @@ The likely layer is Vercel app login/session/auth behavior, chat job/runtime con
 - `/api/chat-job?job_id=session-check-probe` returns 400 or 404 after login: the token passed middleware and the browser should show `Session accepted. Build 2026-06-07-2.` This probe is not expected to return a real chat job.
 - `/api/chat` or completed chat jobs fail with 502/500-class errors: auth passed, but the model service, Hermes config, Anthropic fallback, or server-side bridge/runtime path failed.
 - `/api/context` returns old or unexpected text: that route is legacy public database context, not proof of what the server-side Command Center bridge supplied to chat.
+- A fast-mode reply that says it can see only basic Command Center context is a prompt/runtime regression, not proof that the bridge is missing. The chat runtime should now tell Mastermind to summarize visible live context whenever the protected snapshot is present and to call out missing sources only when the payload says they are missing.
 
 ## iPhone Reset Instructions
 

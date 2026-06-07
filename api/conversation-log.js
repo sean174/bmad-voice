@@ -1,9 +1,10 @@
+import { Pool } from '@neondatabase/serverless';
+
 export default async function handler(req, res) {
   if (!process.env.POSTGRES_URL) {
     return res.status(400).json({ error: 'No database configured' });
   }
 
-  const { Pool } = require('@neondatabase/serverless');
   const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
 
   try {

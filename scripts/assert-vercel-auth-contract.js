@@ -83,6 +83,10 @@ assert(chat.includes("process.env.MASTERMIND_BRIDGE_TOKEN || ''"), 'chat should 
 assert(chat.includes('Authorization: `Bearer ${token}`'), 'context fetch should use server-side bearer token');
 assert(chat.includes('Authorization: `Bearer ${bridgeToken}`'), 'chat idea capture should use server-side bridge token');
 assert(ideas.includes('Authorization: `Bearer ${bridgeToken}`'), 'ideas endpoint should use server-side bridge token');
+assert(chat.includes('safeContextDiagnostics'), 'chat should expose only safe context diagnostics');
+assert(chat.includes('projects_sorted_by_rank'), 'chat should preserve ranked project context in compact mode');
+assert(chat.includes('business_context_docs_excerpts'), 'chat should preserve concise business doc excerpts in compact mode');
+assert(chat.includes('do not say you lack the full operational picture'), 'chat should instruct the model not to deny loaded Command Center context');
 
 assert(!/process\.env\.(COMMAND_CENTER_CONTEXT_URL|COMMAND_CENTER_IDEAS_URL|MASTERMIND_BRIDGE_TOKEN|HERMES_API_KEY|HERMES_API_BASE_URL|API_SERVER_KEY|VERCEL_TOKEN|DASHBOARD_TOKEN)/.test(index), 'public HTML must not read secret or bridge env names');
 assert(health.includes('Boolean(process.env.'), 'health checks should report booleans instead of env values');

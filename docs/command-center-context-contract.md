@@ -34,6 +34,20 @@ The endpoint should return JSON directly or wrapped in a top-level `data` object
       "cash_collected": "$42k",
       "delivery_capacity": "healthy"
     },
+    "current_priorities": [
+      {
+        "name": "90-day pipeline goal",
+        "summary": "Current priority used to judge focus and tradeoffs."
+      }
+    ],
+    "projects_sorted_by_rank": [
+      {
+        "name": "Advisor Pipeline",
+        "rank": 1,
+        "status": "active",
+        "summary": "Highest leverage project by Command Center rank."
+      }
+    ],
     "top_projects": [
       {
         "name": "Advisor Pipeline",
@@ -76,6 +90,17 @@ The endpoint should return JSON directly or wrapped in a top-level `data` object
         "created_at": "2026-06-06T08:55:00Z"
       }
     ],
+    "recent_dashboard_events": [
+      {
+        "name": "Pipeline status changed",
+        "summary": "Recent read-only dashboard signal.",
+        "created_at": "2026-06-06T09:45:00Z"
+      }
+    ],
+    "tools_context": {
+      "asana": "read-only summary",
+      "ghl": "read-only summary"
+    },
     "business_context_docs": [
       {
         "title": "Elevated Advisor Operating Brief",
@@ -89,14 +114,15 @@ The endpoint should return JSON directly or wrapped in a top-level `data` object
 }
 ```
 
-Mastermind also accepts common aliases such as `generatedAt`, `context_scope`, `source_list`, `metrics`, `priority_projects`, `current_projects`, `operations`, `ops`, `risks`, `stuck_items`, `open_decisions`, `newest_ideas`, `context_docs`, `documents`, and nested `command_center_state`.
+Mastermind also accepts common aliases such as `generatedAt`, `context_scope`, `source_list`, `metrics`, `priority_projects`, `current_projects`, `ranked_projects`, `operations`, `ops`, `risks`, `stuck_items`, `open_decisions`, `newest_ideas`, `dashboard_events`, `events`, `tools`, `context_docs`, `documents`, and nested `command_center_state`.
 
 ## Fallback Behavior
 
 - If either environment variable is missing, Mastermind skips live Command Center context.
 - If the endpoint fails, returns non-JSON, or returns a non-2xx response, Mastermind skips live Command Center context and continues without inventing business state.
-- Fast voice mode uses a compact read-only snapshot: sources, source timestamps, KPI headlines, top projects, blockers, pending decisions, active operations, recent operations, and newest ideas.
+- Fast voice mode uses a compact read-only snapshot: sources, source timestamps, KPI headlines, current priorities, ranked/top projects, blockers, pending decisions, active operations, recent operations, recent dashboard events, newest ideas, tools context, and concise business document excerpts.
 - Deep and operator modes use the fuller read-only snapshot, plus admin context, recent conversations, and matched reference documents when available.
 - Secret-like keys and values are redacted before context is formatted.
+- When live context is present, Mastermind should summarize what is visible from the snapshot instead of saying it lacks the full operational picture. It should name missing sources only when the snapshot itself indicates they are missing.
 
 Do not include raw credentials, private tokens, API keys, cookies, or write-capable URLs in the snapshot. Source labels should identify where the state came from without exposing secrets.
