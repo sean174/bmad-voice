@@ -6,7 +6,9 @@ const root = path.join(__dirname, '..');
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
 const middleware = read('middleware.js');
+const vercel = read('vercel.json');
 const index = read('public/index.html');
+const manifest = read('public/manifest.json');
 const chat = read('api/chat.js');
 const ideas = read('api/ideas.js');
 const health = read('api/health.js');
@@ -38,8 +40,21 @@ assert(index.includes('function clearStoredSession()'), 'browser should have a s
 assert(index.includes("localStorage.removeItem('bmad_token')"), 'stale token reset should remove bmad_token');
 assert(index.includes('function validateSavedSession()'), 'saved localStorage sessions should be validated');
 assert(index.includes('/api/chat-job?job_id=session-check-probe'), 'saved session validation should use a protected same-origin probe');
+assert(index.includes('const APP_VERSION'), 'browser should expose a visible build/version stamp');
+assert(index.includes('function resetAppSession()'), 'browser should have an explicit reset/session recovery helper');
+assert(index.includes("new URLSearchParams(window.location.search).get('reset') === '1'"), 'browser should support ?reset=1 recovery');
+assert(index.includes('sessionStorage.clear()'), 'reset recovery should clear sessionStorage');
+assert(index.includes("url.searchParams.set('t', Date.now().toString(36))"), 'reset recovery should reload with a cache-busting query');
+assert(index.includes('Session accepted. Build'), 'saved session probe should explain expected diagnostic statuses');
 assert(index.includes("fetch('/api/health')"), 'browser should show non-secret health diagnostics');
 assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sessionToken"), 'lifecycle resume should restore the session token');
+assert(manifest.includes('"start_url": "/?v=2026-06-07-2"'), 'PWA start_url should carry the current shell version');
+
+for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/manifest.json"']) {
+  assert(vercel.includes(source), `vercel headers should include ${source}`);
+}
+assert(vercel.includes('"key": "Cache-Control"'), 'vercel config should set cache-control headers');
+assert(vercel.includes('"value": "no-store, max-age=0"'), 'HTML and manifest should be no-store for mobile/PWA recovery');
 
 const publicApiCalls = [
   "fetch('/api/login'",

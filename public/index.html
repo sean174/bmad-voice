@@ -10,7 +10,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#080808">
-  <link rel="manifest" href="/manifest.json">
+  <meta name="mastermind-app-version" content="2026-06-07-2">
+  <link rel="manifest" href="/manifest.json?v=2026-06-07-2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fraunces:ital,opsz,wght@1,9..144,700;1,9..144,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -232,6 +233,16 @@
 
     .session-diagnostic.warn {
       color: var(--red);
+    }
+
+    .app-version {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 12px;
+      opacity: 0.75;
     }
 
     /* ---- SCREEN 2: START SESSION ---- */
@@ -1260,7 +1271,10 @@
       <button id="show-login-btn" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Already have a code? Sign in</button>
     </div>
   </div>
-  <div class="login-fade" data-fade="6"><button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset &amp; Reload</button></div>
+  <div class="login-fade" data-fade="6">
+    <button type="button" onclick="resetAppSession()" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset App Session</button>
+    <div class="app-version" data-app-version>Build 2026-06-07-2</div>
+  </div>
 </div>
 
 <!-- SCREEN 2: START SESSION -->
@@ -1270,7 +1284,8 @@
   <p class="subtext" id="last-session-text">Start a read-only Command Center session.</p>
   <div id="session-diagnostic" class="session-diagnostic" aria-live="polite">Checking session...</div>
   <button id="start-btn" class="btn-primary">Start Session</button>
-  <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
+  <button type="button" onclick="resetAppSession()" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
+  <div class="app-version" data-app-version>Build 2026-06-07-2</div>
 </div>
 
 <!-- SCREEN 3: CHAT -->
@@ -1361,6 +1376,38 @@
 </div>
 
 <script>
+const APP_VERSION = document.querySelector('meta[name="mastermind-app-version"]')?.content || '2026-06-07-2';
+
+function clearBrowserSessionStorage() {
+  try {
+    localStorage.clear();
+  } catch (e) {}
+
+  try {
+    sessionStorage.clear();
+  } catch (e) {}
+}
+
+function buildCacheBustedHomeUrl() {
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('v', APP_VERSION);
+  url.searchParams.set('t', Date.now().toString(36));
+  return url.toString();
+}
+
+function resetAppSession() {
+  clearBrowserSessionStorage();
+  window.location.replace(buildCacheBustedHomeUrl());
+}
+
+if (new URLSearchParams(window.location.search).get('reset') === '1') {
+  resetAppSession();
+}
+
+document.querySelectorAll('[data-app-version]').forEach(el => {
+  el.textContent = `Build ${APP_VERSION}`;
+});
+
 // ---- LOGIN FADE-IN ----
 (function() {
   const fadeEls = document.querySelectorAll('.login-fade');
@@ -1518,14 +1565,21 @@ async function validateSavedSession() {
     return;
   }
 
+  showSessionDiagnostic(`Checking session. Build ${APP_VERSION}.`);
   await refreshHealthDiagnostic();
 
   try {
     const response = await apiFetch('/api/chat-job?job_id=session-check-probe');
     if (response.status === 401) return;
+    if (response.status === 400 || response.status === 404) {
+      showSessionDiagnostic(`Session accepted. Build ${APP_VERSION}.`);
+      return;
+    }
     if (response.status >= 500) {
       showSessionDiagnostic('Session token accepted. Chat service is not ready.', true);
+      return;
     }
+    showSessionDiagnostic(`Session ready. Build ${APP_VERSION}.`);
   } catch (e) {
     showSessionDiagnostic('Session check could not finish.', true);
   }
