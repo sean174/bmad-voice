@@ -589,13 +589,34 @@ async function getUserContext(userLabel) {
   }
 }
 
+function normalizeAuthLabel(label) {
+  return String(label || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function isAdminUser(userLabel) {
+  const normalizedUserLabel = normalizeAuthLabel(userLabel);
+  if (!normalizedUserLabel) return false;
+
   const entries = (process.env.AUTH_PASSWORDS || '').split(',').map(e => e.trim()).filter(Boolean);
   for (const entry of entries) {
     const parts = entry.split(':');
-    if (parts.length === 3 && parts[0] === userLabel && parts[2] === 'admin') return true;
+    if (
+      parts.length === 3
+      && normalizeAuthLabel(parts[0]) === normalizedUserLabel
+      && normalizeAuthLabel(parts[2]) === 'admin'
+    ) {
+      return true;
+    }
   }
   return false;
+}
+
+function logCommandCenterAdminSkip(userLabel, isAdmin) {
+  if (isAdmin) return;
+  console.info('Command Center context skipped for non-admin', {
+    normalizedUserLabel: normalizeAuthLabel(userLabel),
+    isAdmin: false,
+  });
 }
 
 async function checkRateLimits() {
@@ -960,6 +981,7 @@ async function prepareChatRequest(reqBody) {
 
   const contextStartedAt = Date.now();
   const isAdmin = isAdminUser(user_label);
+  logCommandCenterAdminSkip(user_label, isAdmin);
 
   if (mode !== 'fast') {
     const { context: userContext } = await getUserContext(user_label);
@@ -1302,6 +1324,7 @@ export default async function handler(req, res) {
 
   const contextStartedAt = Date.now();
   const isAdmin = isAdminUser(user_label);
+  logCommandCenterAdminSkip(user_label, isAdmin);
 
   // Per-user Postgres memory is reserved for deep/operator requests.
   if (mode !== 'fast') {

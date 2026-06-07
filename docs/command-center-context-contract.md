@@ -133,6 +133,8 @@ The live bridge may send `current_priorities` as an object rather than an array.
 
 Root cause fixed on 2026-06-07: the compact formatter previously called the list formatter for object-shaped `current_priorities`, so no priority details were printed. It also looked for ranked project rows in `projects_sorted_by_rank` before `projects`; when `projects_sorted_by_rank` was the boolean `false`, the explicit ranked-project section was empty and the model hedged even though the bridge had ranked rows under `projects`.
 
+Second root cause fixed on 2026-06-07: admin context injection was still gated by a case-sensitive `AUTH_PASSWORDS` label comparison. Live chat jobs sent `user_label` as lowercase `sean`, while the configured auth entry could store `Sean` or another case variant. That mismatch made the chat API treat Sean as non-admin, so the protected Command Center context was skipped even after the formatter was corrected. Admin label matching is now whitespace-normalized and case-insensitive only for the authorization check; stored labels remain unchanged elsewhere.
+
 ## Fallback Behavior
 
 - If either environment variable is missing, Mastermind skips live Command Center context.

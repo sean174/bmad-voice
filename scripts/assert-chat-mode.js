@@ -16,6 +16,9 @@ const context = {
   fetch: async () => {
     throw new Error('fetch should not be called by mode assertions');
   },
+  setTimeout,
+  clearTimeout,
+  AbortController,
   TextDecoder,
 };
 
@@ -24,6 +27,8 @@ this.SYSTEM_PROMPT = SYSTEM_PROMPT;
 this.buildHermesSystemMessage = buildHermesSystemMessage;
 this.resolveRequestMode = resolveRequestMode;
 this.isFastModeEscalationRequest = isFastModeEscalationRequest;
+this.isAdminUser = isAdminUser;
+this.prepareChatRequest = prepareChatRequest;
 this.formatCommandCenterContext = formatCommandCenterContext;
 this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;`, context, {
   filename: chatPath,
@@ -57,6 +62,12 @@ assert.strictEqual(context.resolveRequestMode({}, 'debug the deployment config')
 
 assert.strictEqual(context.isFastModeEscalationRequest('debug the deployment config'), true);
 assert.strictEqual(context.isFastModeEscalationRequest('what should I focus on today?'), false);
+
+context.process.env.AUTH_PASSWORDS = 'Sean:test-password:admin,Other:test-password:user';
+assert.strictEqual(context.isAdminUser('sean'), true);
+assert.strictEqual(context.isAdminUser('  SEAN  '), true);
+assert.strictEqual(context.isAdminUser(' SeAn '), true);
+assert.strictEqual(context.isAdminUser('other'), false);
 
 const compact = context.formatCompactCommandCenterContext({
   data: {
@@ -196,4 +207,73 @@ assert(!full.includes('ghp_abcdefghijklmnopqrstuvwxyz123456'));
 assert(!full.includes('sk-abcdefghijklmnopqrstuvwxyz123456'));
 assert(full.length <= 40000);
 
-console.log('Chat mode assertions passed');
+for (const fakeProjectName of [
+  'Sales Acceleration Framework',
+  'Lead Generation System Optimization',
+  'Client Onboarding Process Enhancement',
+]) {
+  assert(!source.includes(fakeProjectName), `api/chat.js should not hardcode fake project fallback ${fakeProjectName}`);
+  assert(!compact.includes(fakeProjectName), `compact formatter should not use fake project fallback ${fakeProjectName}`);
+  assert(!full.includes(fakeProjectName), `full formatter should not use fake project fallback ${fakeProjectName}`);
+}
+
+async function runPrepareAssertions() {
+  let bridgeFetchCount = 0;
+  context.process.env.AUTH_PASSWORDS = 'Sean:test-password:admin';
+  context.process.env.COMMAND_CENTER_CONTEXT_URL = 'https://command-center.example.test/readonly/context';
+  context.process.env.MASTERMIND_BRIDGE_TOKEN = 'test-bridge-token';
+  context.fetch = async (url, options) => {
+    bridgeFetchCount += 1;
+    assert.strictEqual(url, context.process.env.COMMAND_CENTER_CONTEXT_URL);
+    assert.strictEqual(options.method, 'GET');
+    assert.strictEqual(options.headers.Authorization, `Bearer ${context.process.env.MASTERMIND_BRIDGE_TOKEN}`);
+    return {
+      ok: true,
+      json: async () => ({
+        data: {
+          generated_at: '2026-06-07T00:00:00Z',
+          scope: 'full-business',
+          projects_sorted_by_rank: false,
+          projects: [
+            { rank: 2, name: 'Lower Ranked Live Project', status: 'active', owner: 'Sean' },
+            { rank: 1, name: 'Highest Ranked Live Project', status: 'blocked', owner: 'Sean', priority: 'P0' },
+          ],
+        },
+      }),
+    };
+  };
+
+  const prepared = await context.prepareChatRequest({
+    mode: 'fast',
+    user_label: 'sean',
+    messages: [{ role: 'user', content: 'What are my top projects?' }],
+  });
+
+  assert.strictEqual(bridgeFetchCount, 1, 'fast mode should fetch Command Center context for lowercase admin label');
+  assert(prepared.systemPrompt.includes('--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---'));
+  assert(prepared.systemPrompt.includes('ranked_projects_from_command_center:'));
+  assert(prepared.systemPrompt.includes('rank: 1 | name: Highest Ranked Live Project | status: blocked'));
+  assert(prepared.systemPrompt.includes('rank: 2 | name: Lower Ranked Live Project | status: active'));
+  assert(
+    prepared.systemPrompt.indexOf('rank: 1 | name: Highest Ranked Live Project') <
+      prepared.systemPrompt.indexOf('rank: 2 | name: Lower Ranked Live Project'),
+    'projects from the live projects array should be sorted by ascending rank'
+  );
+
+  for (const fakeProjectName of [
+    'Sales Acceleration Framework',
+    'Lead Generation System Optimization',
+    'Client Onboarding Process Enhancement',
+  ]) {
+    assert(!prepared.systemPrompt.includes(fakeProjectName), `prepared prompt should not include fake fallback ${fakeProjectName}`);
+  }
+}
+
+runPrepareAssertions()
+  .then(() => {
+    console.log('Chat mode assertions passed');
+  })
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
