@@ -31,7 +31,10 @@ this.isAdminUser = isAdminUser;
 this.prepareChatRequest = prepareChatRequest;
 this.formatCommandCenterContext = formatCommandCenterContext;
 this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;
-this.guardKnownInventedBusinessFacts = guardKnownInventedBusinessFacts;`, context, {
+this.guardKnownInventedBusinessFacts = guardKnownInventedBusinessFacts;
+this.collectHermesStream = collectHermesStream;
+this.collectAnthropicStream = collectAnthropicStream;
+this.writeTextChunk = writeTextChunk;`, context, {
   filename: chatPath,
 });
 
@@ -67,6 +70,11 @@ assert.strictEqual(context.resolveRequestMode({}, 'debug the deployment config')
 
 assert.strictEqual(context.isFastModeEscalationRequest('debug the deployment config'), true);
 assert.strictEqual(context.isFastModeEscalationRequest('what should I focus on today?'), false);
+
+assert(source.includes('collectHermesStream(response)'), 'streaming path should collect Hermes output before emitting browser text');
+assert(source.includes('collectAnthropicStream(response)'), 'streaming path should collect Anthropic output before emitting browser text');
+assert(!source.includes('streamHermesToBrowser(response, res)'), 'Hermes provider chunks should not be streamed before the hallucination guard');
+assert(!source.includes('streamAnthropicToBrowser(response, res)'), 'Anthropic provider chunks should not be streamed before the hallucination guard');
 
 context.process.env.AUTH_PASSWORDS = 'Sean:test-password:admin,Other:test-password:user';
 assert.strictEqual(context.isAdminUser('sean'), true);
@@ -343,6 +351,74 @@ async function runPrepareAssertions() {
       `guard should block known bad example ${badFact}`
     );
   }
+
+  function makeStreamResponse(chunks) {
+    let index = 0;
+    return {
+      body: {
+        getReader: () => ({
+          read: async () => {
+            if (index >= chunks.length) return { done: true };
+            const value = Buffer.from(chunks[index], 'utf8');
+            index += 1;
+            return { done: false, value };
+          },
+        }),
+      },
+    };
+  }
+
+  function decodeTextWrites(writes) {
+    return writes.map(write => {
+      assert(write.startsWith('data: '), 'browser stream write should be an SSE data line');
+      return JSON.parse(write.slice(6).trim());
+    });
+  }
+
+  const hermesStreamResult = await context.collectHermesStream(makeStreamResponse([
+    'data: {"choices":[{"delta":{"content":"The top project is Sales "}}]}\n\n',
+    'data: {"choices":[{"delta":{"content":"Acceleration Framework."}}],"usage":{"prompt_tokens":11,"completion_tokens":7}}\n\n',
+    'data: [DONE]\n\n',
+  ]));
+  assert.strictEqual(hermesStreamResult.fullResponse, 'The top project is Sales Acceleration Framework.');
+  assert.strictEqual(hermesStreamResult.inputTokens, 11);
+  assert.strictEqual(hermesStreamResult.outputTokens, 7);
+
+  const hermesGuarded = context.guardKnownInventedBusinessFacts(
+    hermesStreamResult.fullResponse,
+    missingPrepared.systemPrompt,
+    missingPrepared.managedMessages
+  );
+  const hermesWrites = [];
+  context.writeTextChunk({ write: payload => hermesWrites.push(payload) }, hermesGuarded);
+  const hermesBrowserEvents = decodeTextWrites(hermesWrites);
+  assert.deepStrictEqual(hermesBrowserEvents, [{
+    type: 'text',
+    content: 'I do not have that data loaded in the current Command Center context.',
+  }], 'Hermes streaming response should emit only the guarded unavailable message');
+
+  const anthropicStreamResult = await context.collectAnthropicStream(makeStreamResponse([
+    'data: {"type":"message_start","message":{"usage":{"input_tokens":13}}}\n\n',
+    'data: {"type":"content_block_delta","delta":{"text":"Invented metric: $83"}}\n\n',
+    'data: {"type":"content_block_delta","delta":{"text":"K MRR"}}\n\n',
+    'data: {"type":"message_delta","usage":{"output_tokens":5}}\n\n',
+  ]));
+  assert.strictEqual(anthropicStreamResult.fullResponse, 'Invented metric: $83K MRR');
+  assert.strictEqual(anthropicStreamResult.inputTokens, 13);
+  assert.strictEqual(anthropicStreamResult.outputTokens, 5);
+
+  const anthropicGuarded = context.guardKnownInventedBusinessFacts(
+    anthropicStreamResult.fullResponse,
+    missingPrepared.systemPrompt,
+    missingPrepared.managedMessages
+  );
+  const anthropicWrites = [];
+  context.writeTextChunk({ write: payload => anthropicWrites.push(payload) }, anthropicGuarded);
+  const anthropicBrowserEvents = decodeTextWrites(anthropicWrites);
+  assert.deepStrictEqual(anthropicBrowserEvents, [{
+    type: 'text',
+    content: 'I do not have that data loaded in the current Command Center context.',
+  }], 'Anthropic streaming response should emit only the guarded unavailable message');
 
   const root = path.join(__dirname, '..');
   const filesToScan = [

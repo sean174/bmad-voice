@@ -1213,7 +1213,7 @@ export async function generateChatCompletion(reqBody) {
   };
 }
 
-async function streamHermesToBrowser(response, res) {
+async function collectHermesStream(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let fullResponse = '';
@@ -1273,7 +1273,7 @@ async function streamHermesToBrowser(response, res) {
   return { fullResponse, inputTokens, outputTokens, estimatedCost: 0 };
 }
 
-async function streamAnthropicToBrowser(response, res) {
+async function collectAnthropicStream(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let fullResponse = '';
@@ -1512,9 +1512,9 @@ export default async function handler(req, res) {
     writeSseHeaders(res);
 
     if (provider === 'hermes') {
-      streamResult = await streamHermesToBrowser(response, res);
+      streamResult = await collectHermesStream(response);
     } else {
-      streamResult = await streamAnthropicToBrowser(response, res);
+      streamResult = await collectAnthropicStream(response);
     }
 
     const guardedResponse = guardKnownInventedBusinessFacts(streamResult.fullResponse, systemPrompt, managedMessages);
