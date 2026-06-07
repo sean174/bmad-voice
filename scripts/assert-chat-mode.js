@@ -30,7 +30,8 @@ this.isFastModeEscalationRequest = isFastModeEscalationRequest;
 this.isAdminUser = isAdminUser;
 this.prepareChatRequest = prepareChatRequest;
 this.formatCommandCenterContext = formatCommandCenterContext;
-this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;`, context, {
+this.formatCompactCommandCenterContext = formatCompactCommandCenterContext;
+this.guardKnownInventedBusinessFacts = guardKnownInventedBusinessFacts;`, context, {
   filename: chatPath,
 });
 
@@ -46,6 +47,10 @@ assert(context.SYSTEM_PROMPT.includes('highest-leverage-activity'));
 assert(context.SYSTEM_PROMPT.includes('Ideas capture is the only allowed write path.'));
 assert(context.SYSTEM_PROMPT.includes('You cannot create tasks, update Asana, update Command Center projects'));
 assert(context.SYSTEM_PROMPT.includes('When live Command Center context is present, do not say you lack the full operational picture.'));
+assert(context.SYSTEM_PROMPT.includes('Never guess, estimate, infer missing business facts'));
+assert(context.SYSTEM_PROMPT.includes('fabricate example project names'));
+assert(context.SYSTEM_PROMPT.includes('the data is not loaded or not visible in the current Command Center context'));
+assert(context.SYSTEM_PROMPT.includes('Command Center context bridge needs fixing or refreshing'));
 
 const hermesSystem = context.buildHermesSystemMessage('test prompt');
 assert(hermesSystem.includes('Mastermind voice interface with a CEO coach layer'));
@@ -208,6 +213,7 @@ assert(!full.includes('sk-abcdefghijklmnopqrstuvwxyz123456'));
 assert(full.length <= 40000);
 
 for (const fakeProjectName of [
+  // Known bad examples from a prior hallucinated response. These must stay out of runtime prompts.
   'Sales Acceleration Framework',
   'Lead Generation System Optimization',
   'Client Onboarding Process Enhancement',
@@ -250,6 +256,8 @@ async function runPrepareAssertions() {
   });
 
   assert.strictEqual(bridgeFetchCount, 1, 'fast mode should fetch Command Center context for lowercase admin label');
+  assert(prepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_STATUS: loaded'));
+  assert(prepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_SCOPE: compact'));
   assert(prepared.systemPrompt.includes('--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---'));
   assert(prepared.systemPrompt.includes('ranked_projects_from_command_center:'));
   assert(prepared.systemPrompt.includes('rank: 1 | name: Highest Ranked Live Project | status: blocked'));
@@ -261,11 +269,103 @@ async function runPrepareAssertions() {
   );
 
   for (const fakeProjectName of [
+    // Known bad examples from a prior hallucinated response. These must stay out of prepared prompts.
     'Sales Acceleration Framework',
     'Lead Generation System Optimization',
     'Client Onboarding Process Enhancement',
   ]) {
     assert(!prepared.systemPrompt.includes(fakeProjectName), `prepared prompt should not include fake fallback ${fakeProjectName}`);
+  }
+
+  context.fetch = async () => {
+    bridgeFetchCount += 1;
+    return { ok: true, json: async () => ({ data: {} }) };
+  };
+
+  const missingPrepared = await context.prepareChatRequest({
+    mode: 'fast',
+    user_label: 'sean',
+    messages: [{ role: 'user', content: 'What are my current KPIs and top projects?' }],
+  });
+
+  assert(missingPrepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_STATUS: absent'));
+  assert(missingPrepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_SCOPE: none'));
+  assert(missingPrepared.systemPrompt.includes('say the data is not loaded or not visible in the current Command Center context'));
+  assert(missingPrepared.systemPrompt.includes('Do not guess, estimate, infer, fabricate examples'));
+
+  context.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      data: {
+        generated_at: '2026-06-07T00:00:00Z',
+        scope: 'full-business',
+        projects: [{ rank: 1, name: 'Loaded Deep Project', status: 'active' }],
+      },
+    }),
+  });
+
+  const deepPrepared = await context.prepareChatRequest({
+    mode: 'deep',
+    user_label: 'sean',
+    messages: [{ role: 'user', content: 'Use deep mode. What context is loaded?' }],
+  });
+
+  assert(deepPrepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_STATUS: loaded'));
+  assert(deepPrepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_SCOPE: full'));
+
+  assert.strictEqual(
+    // Known bad example should be blocked when it was not in context or user messages.
+    context.guardKnownInventedBusinessFacts('The top project is Sales Acceleration Framework.', missingPrepared.systemPrompt, missingPrepared.managedMessages),
+    'I do not have that data loaded in the current Command Center context.'
+  );
+  assert.strictEqual(
+    // The narrow guard allows the same string when Sean explicitly supplied it.
+    context.guardKnownInventedBusinessFacts(
+      'The top project is Sales Acceleration Framework.',
+      missingPrepared.systemPrompt,
+      [{ role: 'user', content: 'Tell me about Sales Acceleration Framework.' }]
+    ),
+    'The top project is Sales Acceleration Framework.'
+  );
+
+  for (const badFact of [
+    // Known bad examples from prior hallucinated responses. These must appear only in this negative test file.
+    'Sales Acceleration Framework',
+    'Lead Generation System Optimization',
+    'Client Onboarding Process Enhancement',
+    'Q4 2024 goals',
+    '$83K MRR',
+    '$72.5K MRR',
+  ]) {
+    assert.strictEqual(
+      context.guardKnownInventedBusinessFacts(`Invented fact: ${badFact}`, missingPrepared.systemPrompt, missingPrepared.managedMessages),
+      'I do not have that data loaded in the current Command Center context.',
+      `guard should block known bad example ${badFact}`
+    );
+  }
+
+  const root = path.join(__dirname, '..');
+  const filesToScan = [
+    'api/chat.js',
+    'docs/command-center-context-contract.md',
+    'docs/mastermind-chat-worker.md',
+    'docs/mastermind-vercel-login-diagnostic.md',
+    'public/index.html',
+    'scripts/mastermind-chat-worker.mjs',
+  ];
+  for (const rel of filesToScan) {
+    const text = fs.readFileSync(path.join(root, rel), 'utf8');
+    for (const badFact of [
+      // Known bad examples from prior hallucinated responses. Runtime files and docs must not contain them.
+      'Sales Acceleration Framework',
+      'Lead Generation System Optimization',
+      'Client Onboarding Process Enhancement',
+      'Q4 2024 goals',
+      '$83K MRR',
+      '$72.5K MRR',
+    ]) {
+      assert(!text.includes(badFact), `${rel} should not contain known bad example ${badFact}`);
+    }
   }
 }
 

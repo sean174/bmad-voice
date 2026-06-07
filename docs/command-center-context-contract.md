@@ -139,9 +139,20 @@ Second root cause fixed on 2026-06-07: admin context injection was still gated b
 
 - If either environment variable is missing, Mastermind skips live Command Center context.
 - If the endpoint fails, returns non-JSON, or returns a non-2xx response, Mastermind skips live Command Center context and continues without inventing business state.
+- If the bridge returns an empty or metadata-only payload, Mastermind treats Command Center context as absent.
+- Prepared prompts include a non-secret sentinel for model behavior and tests: `COMMAND_CENTER_CONTEXT_STATUS: loaded` or `absent`, plus `COMMAND_CENTER_CONTEXT_SCOPE: compact`, `full`, or `none`.
 - Fast voice mode uses a compact read-only snapshot: sources, source timestamps, KPI headlines, current priorities, `ranked_projects_from_command_center`, ranked/top projects, blockers, pending decisions, active operations, recent operations, recent dashboard events, newest ideas, tools context, and concise business document excerpts.
 - Deep and operator modes use the fuller read-only snapshot, plus admin context, recent conversations, and matched reference documents when available.
 - Secret-like keys and values are redacted before context is formatted.
 - When live context is present, Mastermind should summarize what is visible from the snapshot instead of saying it lacks the full operational picture. It should name missing sources only when the snapshot itself indicates they are missing.
+
+## No-Hallucination Contract
+
+- Mastermind may use only the injected Command Center context, the user's messages, admin business context, recent conversation history, and explicit matched reference documents.
+- Mastermind must never guess, estimate, infer missing business facts, fabricate example project names, fabricate KPIs, or fill gaps with generic placeholder business state.
+- If Sean asks for current projects, rankings, KPIs, goals, operations, decisions, or business state and Command Center context is absent or insufficient, Mastermind should answer briefly: `I do not have that data loaded in the current Command Center context.`
+- If context is loaded but a requested field is absent, Mastermind should say that field is not present in the loaded context.
+- Mastermind should not ask Sean to retype business state as a substitute for missing context. It should say the Command Center context bridge needs fixing or refreshing when that is the likely issue.
+- A narrow response guard may replace known previously invented business facts with the safe unavailable response when those exact strings were not present in the loaded context or user messages.
 
 Do not include raw credentials, private tokens, API keys, cookies, or write-capable URLs in the snapshot. Source labels should identify where the state came from without exposing secrets.
