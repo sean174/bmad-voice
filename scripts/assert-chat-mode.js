@@ -65,8 +65,19 @@ const compact = context.formatCompactCommandCenterContext({
     sources: [{ name: 'Projects DB', updated_at: '2026-06-04T12:00:00Z' }],
     source_timestamps: { projects: '2026-06-04T12:00:00Z' },
     kpi_headlines: { revenue: '$1' },
-    current_priorities: [{ title: '90-day pipeline goal', summary: 'Fill the advisor pipeline' }],
-    projects_sorted_by_rank: [{ title: 'Ranked Pipeline Project', rank: 1, summary: 'Highest leverage project' }],
+    current_priorities: {
+      top_priorities: ['Protect Command Center access', 'Advance advisor sales bot'],
+      current_constraint: 'Travel access is blocking normal Command Center work.',
+      weekly_focus: 'Restore secure access and keep revenue projects moving.',
+      do_not_distract: ['Low-leverage UI polish'],
+      last_context_refresh: '2026-06-04T11:55:00Z',
+    },
+    projects_sorted_by_rank: false,
+    projects: [
+      { rank: 1, name: 'Command Center Security + Travel Access', status: 'blocked', owner: 'Sean', priority: 'P0', summary: 'Restore secure travel access', next_step: 'Verify locked-down bridge', id: 'proj-sec-travel' },
+      { rank: 2, name: 'Advisor Intent Router + Sales Bot', status: 'active', owner: 'Sean', priority: 'P1', summary: 'Route buyer intent into sales bot', next_step: 'Review routing logic', id: 'proj-intent-router' },
+      { rank: 4, name: 'SMS Bot to Aged Roth Leads', status: 'active', owner: 'Sean', priority: 'P2', summary: 'Revive aged Roth leads', next_step: 'Check reply quality', id: 'proj-aged-roth' },
+    ],
     top_projects: [{ title: 'Enrollment Sprint', priority: 'P1', summary: 'Fill advisor pipeline' }],
     blockers: [{ title: 'Blocked launch', blocked_on: 'approval' }],
     pending_decisions: [{ title: 'Choose offer', question: 'A or B?' }],
@@ -82,9 +93,17 @@ assert(compact.includes('generated_at: 2026-06-05T00:00:00Z'));
 assert(compact.includes('sources:'));
 assert(compact.includes('source_timestamps:'));
 assert(compact.includes('current_priorities:'));
-assert(compact.includes('90-day pipeline goal'));
+assert(compact.includes('top_priorities: ["Protect Command Center access","Advance advisor sales bot"]'));
+assert(compact.includes('current_constraint: Travel access is blocking normal Command Center work.'));
+assert(compact.includes('weekly_focus: Restore secure access and keep revenue projects moving.'));
+assert(compact.includes('do_not_distract: ["Low-leverage UI polish"]'));
+assert(compact.includes('ranked_projects_from_command_center:'));
+assert(compact.includes('rank: 1 | name: Command Center Security + Travel Access | status: blocked'));
+assert(compact.includes('rank: 2 | name: Advisor Intent Router + Sales Bot | status: active'));
+assert(compact.includes('rank: 4 | name: SMS Bot to Aged Roth Leads | status: active'));
+assert(compact.includes('instruction: If Sean asks for top projects'));
 assert(compact.includes('projects_sorted_by_rank:'));
-assert(compact.includes('Ranked Pipeline Project'));
+assert(compact.includes('- none provided'));
 assert(compact.includes('top_projects:'));
 assert(compact.includes('Enrollment Sprint'));
 assert(compact.includes('recent_dashboard_events:'));
@@ -110,8 +129,18 @@ const full = context.formatCommandCenterContext({
       recent_ideas: [{ text: 'Build pre-call proof packet', source: 'Mastermind' }],
       source_timestamps: { ghl: '2026-06-06T09:00:00Z', asana: '2026-06-06T08:30:00Z' },
     },
-    current_priorities: [{ name: '90-day Goal', summary: 'Grow qualified appointments' }],
-    projects_sorted_by_rank: [{ name: 'Ranked Advisor Pipeline', rank: 1, summary: 'Primary project' }],
+    current_priorities: {
+      top_priorities: ['Grow qualified appointments', 'Protect delivery capacity'],
+      current_constraint: 'Show rate needs qualification improvements.',
+      weekly_focus: 'Tighten appointment quality.',
+      do_not_distract: ['New offer sprawl'],
+      last_updated_at: '2026-06-06T09:45:00Z',
+    },
+    projects_sorted_by_rank: false,
+    projects: [
+      { name: 'Ranked Advisor Pipeline', rank: 1, status: 'active', owner: 'Sean', priority: 'P1', summary: 'Primary project', next_step: 'Improve reply quality', id: 'project-1' },
+      { name: 'Delivery Capacity Guardrails', rank: 2, status: 'active', owner: 'Team', priority: 'P2', summary: 'Protect fulfillment quality', id: 'project-2' },
+    ],
     tools_context: { command_center_bridge: 'read-only available' },
     metrics: { booked_calls: 12, cash_collected: '$42k', access_token: 'ghp_abcdefghijklmnopqrstuvwxyz123456' },
     sources: [{ title: 'Command Center Snapshot', updated_at: '2026-06-06T09:30:00Z', path: '/readonly/snapshot' }],
@@ -130,9 +159,15 @@ for (const value of [
   'sources:',
   'source_timestamps:',
   'current_priorities:',
-  '90-day Goal',
+  'top_priorities: ["Grow qualified appointments","Protect delivery capacity"]',
+  'current_constraint: Show rate needs qualification improvements.',
+  'weekly_focus: Tighten appointment quality.',
+  'do_not_distract: ["New offer sprawl"]',
+  'ranked_projects_from_command_center:',
+  'rank: 1 | name: Ranked Advisor Pipeline | status: active',
+  'rank: 2 | name: Delivery Capacity Guardrails | status: active',
+  'instruction: If Sean asks for top projects',
   'projects_sorted_by_rank:',
-  'Ranked Advisor Pipeline',
   'top_projects:',
   'Advisor Pipeline',
   'active_operations:',

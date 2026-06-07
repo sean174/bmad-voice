@@ -236,6 +236,73 @@ function appendObject(lines, title, item, limit = 20) {
   }
 }
 
+function appendObjectFields(lines, title, item, fields) {
+  lines.push(`${title}:`);
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    lines.push('- none provided');
+    return;
+  }
+
+  let count = 0;
+  for (const field of fields) {
+    const value = item[field];
+    if (value !== null && value !== undefined && value !== '') {
+      lines.push(`- ${field}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`);
+      count += 1;
+    }
+  }
+
+  if (count === 0) lines.push('- none provided');
+}
+
+function appendCurrentPriorities(lines, data) {
+  const prioritiesObject = pickContextObject(data, ['current_priorities', 'priorities.current', 'priorities']);
+  if (prioritiesObject) {
+    appendObjectFields(lines, 'current_priorities', prioritiesObject, [
+      'top_priorities',
+      'current_constraint',
+      'weekly_focus',
+      'do_not_distract',
+      'last_context_refresh',
+      'last_updated_at',
+    ]);
+    return;
+  }
+
+  appendList(
+    lines,
+    'current_priorities',
+    pickContextArray(data, ['current_priorities', 'priorities.current', 'priorities']),
+    ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'reason', 'next_step'],
+    8
+  );
+}
+
+function getRankedProjects(data) {
+  const projects = pickContextArray(data, [
+    'projects_sorted_by_rank',
+    'ranked_projects',
+    'projects.ranked',
+    'projects',
+    'top_projects',
+    'priority_projects',
+    'current_projects',
+    'projects.top',
+    'projects.priority',
+  ]);
+
+  return projects
+    .slice()
+    .sort((a, b) => {
+      const aRank = a && typeof a === 'object' ? Number(a.rank) : NaN;
+      const bRank = b && typeof b === 'object' ? Number(b.rank) : NaN;
+      if (Number.isFinite(aRank) && Number.isFinite(bRank)) return aRank - bRank;
+      if (Number.isFinite(aRank)) return -1;
+      if (Number.isFinite(bRank)) return 1;
+      return 0;
+    });
+}
+
 function contextArrayCount(data, keys) {
   return pickContextArray(data, keys).length;
 }
@@ -253,8 +320,9 @@ function safeContextDiagnostics(raw) {
     present: true,
     topLevelKeys: Object.keys(data).sort().slice(0, 40),
     counts: {
-      current_priorities: contextArrayCount(data, ['current_priorities', 'priorities.current', 'priorities']),
+      current_priorities: contextArrayCount(data, ['current_priorities', 'priorities.current', 'priorities']) || contextObjectCount(data, ['current_priorities', 'priorities.current', 'priorities']),
       projects_sorted_by_rank: contextArrayCount(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']),
+      ranked_projects_from_command_center: getRankedProjects(data).length,
       top_projects: contextArrayCount(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects_sorted_by_rank', 'ranked_projects', 'projects.ranked', 'projects']),
       active_operations: contextArrayCount(data, ['active_operations', 'operations.active', 'operations', 'ops']),
       blockers: contextArrayCount(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']),
@@ -279,11 +347,13 @@ function formatCommandCenterContext(raw) {
     '--- LIVE COMMAND CENTER CONTEXT (read-only) ---',
     `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
+    'instruction: If Sean asks for top projects, answer from ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
   ];
 
   appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'type', 'updated_at', 'updatedAt', 'timestamp', 'generated_at', 'url', 'path']);
   appendObject(lines, 'source_timestamps', sourceTimestamps);
-  appendList(lines, 'current_priorities', pickContextArray(data, ['current_priorities', 'priorities.current', 'priorities']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'reason', 'next_step']);
+  appendCurrentPriorities(lines, data);
+  appendList(lines, 'ranked_projects_from_command_center', getRankedProjects(data), ['rank', 'name', 'title', 'status', 'owner', 'priority', 'summary', 'next_step', 'id'], 8);
   appendList(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
   appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects_sorted_by_rank', 'ranked_projects', 'projects.ranked', 'projects']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
   appendList(lines, 'active_operations', pickContextArray(data, ['active_operations', 'operations.active', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step', 'updated_at']);
@@ -333,12 +403,14 @@ function formatCompactCommandCenterContext(raw) {
     '--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---',
     `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
+    'instruction: If Sean asks for top projects, answer from ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
   ];
 
   appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'updated_at', 'updatedAt', 'timestamp'], 5);
   appendObject(lines, 'source_timestamps', sourceTimestamps, 8);
   appendObject(lines, 'kpi_headlines', kpis, 10);
-  appendList(lines, 'current_priorities', pickContextArray(data, ['current_priorities', 'priorities.current', 'priorities']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'reason', 'next_step'], 8);
+  appendCurrentPriorities(lines, data);
+  appendList(lines, 'ranked_projects_from_command_center', getRankedProjects(data), ['rank', 'name', 'title', 'status', 'owner', 'priority', 'summary', 'next_step', 'id'], 8);
   appendList(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'next_step'], 8);
   appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects_sorted_by_rank', 'ranked_projects', 'projects.ranked', 'projects']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'next_step'], 8);
   appendList(lines, 'active_blockers', pickContextArray(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on'], 6);

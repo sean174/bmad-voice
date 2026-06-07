@@ -34,17 +34,26 @@ The endpoint should return JSON directly or wrapped in a top-level `data` object
       "cash_collected": "$42k",
       "delivery_capacity": "healthy"
     },
-    "current_priorities": [
-      {
-        "name": "90-day pipeline goal",
-        "summary": "Current priority used to judge focus and tradeoffs."
-      }
-    ],
-    "projects_sorted_by_rank": [
+    "current_priorities": {
+      "top_priorities": [
+        "90-day pipeline goal"
+      ],
+      "current_constraint": "Current constraint used to judge tradeoffs.",
+      "weekly_focus": "Primary focus for the current week.",
+      "do_not_distract": [
+        "Lower-priority work to avoid"
+      ],
+      "last_context_refresh": "2026-06-06T09:45:00Z",
+      "last_updated_at": "2026-06-06T09:45:00Z"
+    },
+    "projects_sorted_by_rank": false,
+    "projects": [
       {
         "name": "Advisor Pipeline",
         "rank": 1,
         "status": "active",
+        "owner": "Sean",
+        "priority": "P1",
         "summary": "Highest leverage project by Command Center rank."
       }
     ],
@@ -116,11 +125,19 @@ The endpoint should return JSON directly or wrapped in a top-level `data` object
 
 Mastermind also accepts common aliases such as `generatedAt`, `context_scope`, `source_list`, `metrics`, `priority_projects`, `current_projects`, `ranked_projects`, `operations`, `ops`, `risks`, `stuck_items`, `open_decisions`, `newest_ideas`, `dashboard_events`, `events`, `tools`, `context_docs`, `documents`, and nested `command_center_state`.
 
+## Formatter Notes
+
+The live Command Center bridge may send `projects_sorted_by_rank` as a boolean availability flag while the ranked rows are under `projects`. Mastermind formats those rows into `ranked_projects_from_command_center`, sorted by ascending `rank`, with rank, name or title, status, owner, priority, summary, next step, and id for the top eight projects. This section is the model's primary source for questions like "What are my three top projects?"
+
+The live bridge may send `current_priorities` as an object rather than an array. Mastermind formats `top_priorities`, `current_constraint`, `weekly_focus`, and `do_not_distract`, plus refresh timestamps when present, in both compact and full context.
+
+Root cause fixed on 2026-06-07: the compact formatter previously called the list formatter for object-shaped `current_priorities`, so no priority details were printed. It also looked for ranked project rows in `projects_sorted_by_rank` before `projects`; when `projects_sorted_by_rank` was the boolean `false`, the explicit ranked-project section was empty and the model hedged even though the bridge had ranked rows under `projects`.
+
 ## Fallback Behavior
 
 - If either environment variable is missing, Mastermind skips live Command Center context.
 - If the endpoint fails, returns non-JSON, or returns a non-2xx response, Mastermind skips live Command Center context and continues without inventing business state.
-- Fast voice mode uses a compact read-only snapshot: sources, source timestamps, KPI headlines, current priorities, ranked/top projects, blockers, pending decisions, active operations, recent operations, recent dashboard events, newest ideas, tools context, and concise business document excerpts.
+- Fast voice mode uses a compact read-only snapshot: sources, source timestamps, KPI headlines, current priorities, `ranked_projects_from_command_center`, ranked/top projects, blockers, pending decisions, active operations, recent operations, recent dashboard events, newest ideas, tools context, and concise business document excerpts.
 - Deep and operator modes use the fuller read-only snapshot, plus admin context, recent conversations, and matched reference documents when available.
 - Secret-like keys and values are redacted before context is formatted.
 - When live context is present, Mastermind should summarize what is visible from the snapshot instead of saying it lacks the full operational picture. It should name missing sources only when the snapshot itself indicates they are missing.
