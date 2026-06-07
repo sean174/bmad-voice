@@ -32,6 +32,13 @@ for (const call of protectedApiCalls) {
 }
 
 assert(index.includes("'x-session-token': sessionToken"), 'apiFetch should attach x-session-token');
+assert(index.includes('async function apiFetch'), 'apiFetch should inspect protected responses');
+assert(index.includes('if (response.status === 401) handleUnauthorizedSession()'), 'apiFetch should reset stale sessions on 401');
+assert(index.includes('function clearStoredSession()'), 'browser should have a scoped session clear helper');
+assert(index.includes("localStorage.removeItem('bmad_token')"), 'stale token reset should remove bmad_token');
+assert(index.includes('function validateSavedSession()'), 'saved localStorage sessions should be validated');
+assert(index.includes('/api/chat-job?job_id=session-check-probe'), 'saved session validation should use a protected same-origin probe');
+assert(index.includes("fetch('/api/health')"), 'browser should show non-secret health diagnostics');
 assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sessionToken"), 'lifecycle resume should restore the session token');
 
 const publicApiCalls = [

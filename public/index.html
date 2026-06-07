@@ -219,6 +219,21 @@
       min-height: 16px;
     }
 
+    .session-diagnostic {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      line-height: 1.6;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .session-diagnostic.warn {
+      color: var(--red);
+    }
+
     /* ---- SCREEN 2: START SESSION ---- */
     #start-screen {
       flex-direction: column;
@@ -1253,6 +1268,7 @@
   <span class="section-label">Mastermind</span>
   <h1 class="headline">Ready when<br>you are.</h1>
   <p class="subtext" id="last-session-text">Start a read-only Command Center session.</p>
+  <div id="session-diagnostic" class="session-diagnostic" aria-live="polite">Checking session...</div>
   <button id="start-btn" class="btn-primary">Start Session</button>
   <button onclick="localStorage.clear(); location.reload();" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
 </div>
@@ -1423,6 +1439,7 @@ const sessionTimerEl = document.getElementById('session-timer');
 const modeLabel = document.getElementById('mode-label');
 const speakingLabel = document.getElementById('speaking-label');
 const controlsEl = document.getElementById('controls');
+const sessionDiagnosticEl = document.getElementById('session-diagnostic');
 
 // ---- NAVIGATION ----
 function showScreen(id) {
@@ -1434,6 +1451,83 @@ function updateStartScreen() {
   const name = userLabel.charAt(0).toUpperCase() + userLabel.slice(1);
   if (name && name !== 'Unknown') {
     document.querySelector('#start-screen .headline').innerHTML = `Hey, ${name}.`;
+  }
+}
+
+function clearStoredSession() {
+  sessionToken = null;
+  userRole = 'guest';
+  userLabel = 'unknown';
+  localStorage.removeItem('bmad_token');
+  localStorage.removeItem('bmad_role');
+  localStorage.removeItem('bmad_label');
+  localStorage.removeItem(PENDING_CHAT_JOB_KEY);
+  pendingChatJobId = null;
+}
+
+function showSessionDiagnostic(message, warn = false) {
+  if (!sessionDiagnosticEl) return;
+  sessionDiagnosticEl.textContent = message;
+  sessionDiagnosticEl.classList.toggle('warn', warn);
+}
+
+function handleUnauthorizedSession() {
+  clearStoredSession();
+  removeThinking();
+  isWaiting = false;
+  sendBtn.disabled = false;
+  saveIdeaBtn.disabled = false;
+  showSessionDiagnostic('Session expired. Sign in again.', true);
+  showScreen('login-screen');
+  document.getElementById('login-error').textContent = 'Session expired. Sign in again.';
+  showToast('Session expired. Sign in again.', 'error');
+}
+
+async function refreshHealthDiagnostic() {
+  if (!sessionToken) {
+    showSessionDiagnostic('Sign in required.', false);
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/health');
+    if (!response.ok) {
+      showSessionDiagnostic('App health check failed.', true);
+      return;
+    }
+    const data = await response.json();
+    const checks = data.checks || {};
+    const missing = [];
+    if (!checks.loginConfigured) missing.push('login');
+    if (!checks.chatJobsConfigured) missing.push('chat jobs');
+    if (!checks.commandCenterContextConfigured) missing.push('context');
+    if (!checks.hermesConfigured) missing.push('Hermes');
+    if (missing.length > 0) {
+      showSessionDiagnostic(`App online. Missing config: ${missing.join(', ')}.`, true);
+    } else {
+      showSessionDiagnostic('App online. Session ready.');
+    }
+  } catch (e) {
+    showSessionDiagnostic('Could not reach health check.', true);
+  }
+}
+
+async function validateSavedSession() {
+  if (!sessionToken) {
+    showSessionDiagnostic('Sign in required.', false);
+    return;
+  }
+
+  await refreshHealthDiagnostic();
+
+  try {
+    const response = await apiFetch('/api/chat-job?job_id=session-check-probe');
+    if (response.status === 401) return;
+    if (response.status >= 500) {
+      showSessionDiagnostic('Session token accepted. Chat service is not ready.', true);
+    }
+  } catch (e) {
+    showSessionDiagnostic('Session check could not finish.', true);
   }
 }
 
@@ -1497,6 +1591,7 @@ if (sessionToken) {
   if (userRole !== 'admin') document.getElementById('session-cost').style.display = 'none';
   updateStartScreen();
   showScreen('start-screen');
+  validateSavedSession();
 }
 
 // ---- LOGIN ----
@@ -1530,6 +1625,7 @@ document.getElementById('login-form').addEventListener('submit', async () => {
       if (userRole !== 'admin') document.getElementById('session-cost').style.display = 'none';
       updateStartScreen();
       showScreen('start-screen');
+      validateSavedSession();
     } else {
       errEl.textContent = data.error || 'Invalid invite code';
     }
@@ -1797,9 +1893,11 @@ function scrollToBottom() {
 }
 
 // ---- API HELPER ----
-function apiFetch(url, options = {}) {
+async function apiFetch(url, options = {}) {
   const headers = { ...options.headers, 'x-session-token': sessionToken };
-  return fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
+  if (response.status === 401) handleUnauthorizedSession();
+  return response;
 }
 
 function createClientId(prefix) {
@@ -2101,6 +2199,7 @@ function restoreSessionFromStorage() {
   if (sessionToken && loginScreen.classList.contains('active')) {
     updateStartScreen();
     showScreen('start-screen');
+    validateSavedSession();
   }
 }
 
@@ -2869,15 +2968,8 @@ document.getElementById('choice-listen').addEventListener('click', () => handleV
 function doLogout() {
   stopAudio();
   if (timerInterval) clearInterval(timerInterval);
-  sessionToken = null;
-  userRole = 'guest';
-  userLabel = 'unknown';
-  localStorage.removeItem('bmad_token');
-  localStorage.removeItem('bmad_role');
-  localStorage.removeItem('bmad_label');
+  clearStoredSession();
   localStorage.removeItem('bmad_session_id');
-  localStorage.removeItem(PENDING_CHAT_JOB_KEY);
-  pendingChatJobId = null;
   conversationHistory = [];
   sessionCost = 0;
   totalInputTokens = 0;
