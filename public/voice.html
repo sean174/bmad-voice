@@ -33,7 +33,7 @@
   .turn { max-width:90%; font-size:14px; line-height:1.7; }
   .turn.me { align-self:flex-end; background:var(--gold); color:#1c1407; padding:9px 12px; font-weight:600;
     border:2px solid var(--gold2); box-shadow:3px 3px 0 #000; }
-  .turn.mm { align-self:flex-start; background:var(--navy2); padding:10px 13px; border:2px solid var(--line); box-shadow:3px 3px 0 #000; }
+  .turn.mm { align-self:flex-start; background:#1a2547; padding:11px 14px; border:2px solid var(--gold); border-right-color:#8a6c28; border-bottom-color:#8a6c28; box-shadow:3px 3px 0 #000; }
   .turn.mm .tag { font-size:9px; letter-spacing:.25em; color:var(--gold); display:block; margin-bottom:6px; }
   .turn.sys { align-self:center; color:var(--bad); font-size:11px; letter-spacing:.1em; text-align:center; }
   .cursor { display:inline-block; width:8px; height:13px; background:var(--gold); vertical-align:-2px; animation:blink .6s steps(1) infinite; }
@@ -75,7 +75,7 @@
   <header>
     <a href="/?chat=1">◂ CHAT</a>
     <span class="brand">MASTERMIND</span>
-    <span class="build">2026-06-12-3</span>
+    <span class="build">2026-06-12-4</span>
   </header>
   <div id="hud"><span class="p1">1UP SEAN</span><span class="coins" id="coinHud">IDEAS BANKED 0</span></div>
 
@@ -105,15 +105,7 @@
   const token = localStorage.getItem('bmad_token');
   const userLabel = localStorage.getItem('bmad_label') || 'unknown';
   if (!token) { location.href = '/'; return; }
-  if ((!localStorage.getItem('bmad_label') || localStorage.getItem('bmad_label') === 'unknown') && !sessionStorage.getItem('label_warned')) {
-    sessionStorage.setItem('label_warned', '1');
-    setTimeout(() => {
-      const d = document.createElement('div');
-      d.className = 'turn sys';
-      d.textContent = 'Command Center context needs a fresh login: tap CHAT, log out, log back in with your code. One time only.';
-      document.getElementById('feed').appendChild(d);
-    }, 400);
-  }
+
   function api(url, options = {}) {
     const headers = Object.assign({}, options.headers, { 'x-session-token': token });
     return fetch(url, Object.assign({}, options, { headers })).then((r) => {
@@ -155,6 +147,44 @@
   })();
 
   // ---- idea coin moment ----
+  function paintCtx(loaded, admin) {
+    let el = document.getElementById('ctxHud');
+    if (!el) {
+      el = document.createElement('span');
+      el.id = 'ctxHud';
+      el.style.cssText = 'letter-spacing:.18em;';
+      document.getElementById('hud').insertBefore(el, document.getElementById('coinHud'));
+    }
+    if (loaded) { el.textContent = 'CTX OK'; el.style.color = 'var(--ok)'; }
+    else if (!admin) {
+      el.textContent = 'CTX OFF - NO PLAYER';
+      el.style.color = 'var(--bad)';
+      showPlayerSelect();
+    } else { el.textContent = 'CTX OFF - BRIDGE'; el.style.color = 'var(--bad)'; }
+  }
+
+  // 8-bit player select: the label gate is client-asserted anyway, so when the
+  // stored label is stale we just ask. No logout ritual.
+  let playerShown = false;
+  function showPlayerSelect() {
+    if (playerShown) return;
+    playerShown = true;
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:70;background:rgba(5,7,15,.92);display:grid;place-items:center;';
+    ov.innerHTML = '<div style="text-align:center">' +
+      '<div style="color:#fff;font-size:14px;letter-spacing:.4em;margin-bottom:22px;text-shadow:2px 2px 0 #000">PLAYER SELECT</div>' +
+      '<button id="p1btn" style="display:block;margin:0 auto 12px;background:var(--gold);color:#1c1407;border:3px solid var(--gold2);border-bottom-color:#8a6c28;border-right-color:#8a6c28;box-shadow:3px 3px 0 #000;padding:12px 30px;font-family:inherit;font-size:13px;letter-spacing:.3em;font-weight:700;cursor:pointer">SEAN</button>' +
+      '<div style="color:var(--dim);font-size:9px;letter-spacing:.15em">RESTORES COMMAND CENTER CONTEXT</div></div>';
+    document.body.appendChild(ov);
+    document.getElementById('p1btn').addEventListener('click', () => {
+      localStorage.setItem('bmad_label', 'Sean');
+      blip(523, 0.07); blip(784, 0.08); setTimeout(() => blip(1047, 0.2), 120);
+      ov.remove();
+      addTurn('sys', 'PLAYER 1 READY - Command Center context restored on your next message.');
+      location.reload();
+    });
+  }
+
   let ideasBanked = Number(sessionStorage.getItem('ideas_banked') || 0);
   const coinHud = document.getElementById('coinHud');
   function paintCoins() { coinHud.textContent = 'IDEAS BANKED ' + ideasBanked; }
@@ -368,6 +398,9 @@
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
+            if (data.type === 'meta') {
+              paintCtx(data.ctx, data.admin);
+            }
             if (data.type === 'text' && data.content) {
               if (T.firstToken === undefined) { T.firstToken = performance.now(); paintTiming(); }
               full += data.content;

@@ -1089,6 +1089,7 @@ async function prepareChatRequest(reqBody) {
 
   const contextStartedAt = Date.now();
   const isAdmin = isAdminUser(user_label);
+  let ccContextLoaded = false;
   logCommandCenterAdminSkip(user_label, isAdmin);
 
   if (mode !== 'fast') {
@@ -1101,12 +1102,14 @@ async function prepareChatRequest(reqBody) {
   if (isAdmin) {
     if (mode === 'fast') {
       const commandCenterContext = await getCommandCenterContext('compact');
+      ccContextLoaded = commandCenterContext.loaded;
       systemPrompt += '\n\n' + buildCommandCenterContextStatus(commandCenterContext.loaded, commandCenterContext.scope);
       if (commandCenterContext.text) {
         systemPrompt += '\n\n' + commandCenterContext.text;
       }
     } else {
       const commandCenterContext = await getCommandCenterContext('full');
+      ccContextLoaded = commandCenterContext.loaded;
       systemPrompt += '\n\n' + buildCommandCenterContextStatus(commandCenterContext.loaded, commandCenterContext.scope);
       if (commandCenterContext.text) {
         systemPrompt += '\n\n' + commandCenterContext.text;
@@ -1516,6 +1519,7 @@ export default async function handler(req, res) {
 
   const contextStartedAt = Date.now();
   const isAdmin = isAdminUser(user_label);
+  let ccContextLoaded = false;
   logCommandCenterAdminSkip(user_label, isAdmin);
 
   // Per-user Postgres memory is reserved for deep/operator requests.
@@ -1529,12 +1533,14 @@ export default async function handler(req, res) {
   if (isAdmin) {
     if (mode === 'fast') {
       const commandCenterContext = await getCommandCenterContext('compact');
+      ccContextLoaded = commandCenterContext.loaded;
       systemPrompt += '\n\n' + buildCommandCenterContextStatus(commandCenterContext.loaded, commandCenterContext.scope);
       if (commandCenterContext.text) {
         systemPrompt += '\n\n' + commandCenterContext.text;
       }
     } else {
       const commandCenterContext = await getCommandCenterContext('full');
+      ccContextLoaded = commandCenterContext.loaded;
       systemPrompt += '\n\n' + buildCommandCenterContextStatus(commandCenterContext.loaded, commandCenterContext.scope);
       if (commandCenterContext.text) {
         systemPrompt += '\n\n' + commandCenterContext.text;
@@ -1626,6 +1632,7 @@ export default async function handler(req, res) {
     }
 
     writeSseHeaders(res);
+    res.write(`data: ${JSON.stringify({ type: 'meta', ctx: ccContextLoaded, admin: isAdmin })}\n\n`);
 
     if (provider === 'hermes') {
       streamResult = await collectHermesStream(response);
