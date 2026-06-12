@@ -1649,6 +1649,9 @@ export default async function handler(req, res) {
       ideaIntercept: false,
       contextLoadMs,
       provider,
+      isAdmin,
+      hasLabel: Boolean(user_label && user_label !== 'unknown'),
+      voiceMode,
       totalMs: Date.now() - startedAt,
     });
 
