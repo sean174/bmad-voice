@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#080808">
-  <meta name="mastermind-app-version" content="2026-06-07-2">
-  <link rel="manifest" href="/manifest.json?v=2026-06-07-2">
+  <meta name="mastermind-app-version" content="2026-06-12-1">
+  <link rel="manifest" href="/manifest.json?v=2026-06-12-1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Fraunces:ital,opsz,wght@1,9..144,700;1,9..144,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -1273,7 +1273,7 @@
   </div>
   <div class="login-fade" data-fade="6">
     <button type="button" onclick="resetAppSession()" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Reset App Session</button>
-    <div class="app-version" data-app-version>Build 2026-06-07-2</div>
+    <div class="app-version" data-app-version>Build 2026-06-12-1</div>
   </div>
 </div>
 
@@ -1285,7 +1285,7 @@
   <div id="session-diagnostic" class="session-diagnostic" aria-live="polite">Checking session...</div>
   <button id="start-btn" class="btn-primary">Start Session</button>
   <button type="button" onclick="resetAppSession()" style="margin-top:24px; background:none; border:none; color:var(--text-dim); font-family:'Space Mono',monospace; font-size:10px; letter-spacing:2px; text-transform:uppercase; cursor:pointer;">Switch User</button>
-  <div class="app-version" data-app-version>Build 2026-06-07-2</div>
+  <div class="app-version" data-app-version>Build 2026-06-12-1</div>
 </div>
 
 <!-- SCREEN 3: CHAT -->
@@ -1376,7 +1376,7 @@
 </div>
 
 <script>
-const APP_VERSION = document.querySelector('meta[name="mastermind-app-version"]')?.content || '2026-06-07-2';
+const APP_VERSION = document.querySelector('meta[name="mastermind-app-version"]')?.content || '2026-06-12-1';
 
 function clearBrowserSessionStorage() {
   try {
