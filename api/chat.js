@@ -923,19 +923,29 @@ async function startHermesStream(systemPrompt, managedMessages, voice = false) {
   };
   if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
 
-  return fetch(`${config.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model: config.model,
-      messages: [
-        { role: 'system', content: buildHermesSystemMessage(systemPrompt) },
-        ...managedMessages,
-      ],
-      stream: true,
-      stream_options: { include_usage: true },
-    }),
-  });
+  // Hard timeout to first byte. Without this, a hung Hermes relay strands the
+  // request forever and the Anthropic fallback never fires.
+  const timeoutMs = Number(process.env.HERMES_BRAIN_TIMEOUT_MS || 12000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: 'system', content: buildHermesSystemMessage(systemPrompt) },
+          ...managedMessages,
+        ],
+        stream: true,
+        stream_options: { include_usage: true },
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function startAnthropicStream(systemPrompt, managedMessages, voice = false) {
@@ -1500,7 +1510,10 @@ export default async function handler(req, res) {
     let response;
     let streamResult;
 
-    if (hermesConfig.enabled) {
+    const hermesForThisRequest = hermesConfig.enabled
+      && !(voiceMode && process.env.MASTERMIND_VOICE_USE_HERMES !== 'true');
+
+    if (hermesForThisRequest) {
       provider = 'hermes';
       console.log('Chat brain provider: Hermes');
       try {
