@@ -1309,6 +1309,82 @@ async function collectHermesStream(response) {
   return { fullResponse, inputTokens, outputTokens, estimatedCost: 0 };
 }
 
+async function relayAnthropicStreamWithGuard(response, res, systemPrompt, managedMessages) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = '';
+  let emittedLen = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let buffer = '';
+  let tripped = false;
+  let firstDeltaMs = null;
+  const relayStartedAt = Date.now();
+  const facts = getKnownInventedBusinessFacts();
+  const allowedText = buildAllowedBusinessFactText(systemPrompt, managedMessages);
+  const HOLDBACK = Math.max(...facts.map((f) => f.length));
+
+  function factViolation(text) {
+    for (const fact of facts) {
+      if (text.includes(fact) && !allowedText.includes(fact)) return true;
+    }
+    return false;
+  }
+
+  function emitUpTo(limit) {
+    if (tripped || limit <= emittedLen) return;
+    const chunk = fullResponse.slice(emittedLen, limit);
+    emittedLen = limit;
+    writeTextChunk(res, chunk);
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const decoded = decoder.decode(value, { stream: true });
+    const split = splitSseLines(buffer, decoded);
+    buffer = split.buffer;
+
+    for (const line of split.lines) {
+      const data = getSseData(line);
+      if (data === null) continue;
+      if (!data || data === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'content_block_delta' && parsed.delta && parsed.delta.type === 'text_delta') {
+          if (firstDeltaMs === null) firstDeltaMs = Date.now() - relayStartedAt;
+          fullResponse += parsed.delta.text;
+          if (!tripped && factViolation(fullResponse)) {
+            tripped = true;
+          } else {
+            emitUpTo(Math.max(emittedLen, fullResponse.length - HOLDBACK));
+          }
+        }
+        if (parsed.type === 'message_start' && parsed.message && parsed.message.usage) {
+          inputTokens = parsed.message.usage.input_tokens || 0;
+        }
+        if (parsed.type === 'message_delta' && parsed.usage) {
+          outputTokens = parsed.usage.output_tokens || outputTokens;
+        }
+      } catch (e) {}
+    }
+  }
+
+  if (tripped || factViolation(fullResponse)) {
+    // guard fired: replace anything not yet emitted with the canned response;
+    // the held-back tail guarantees the banned fact itself was never emitted
+    writeTextChunk(res, (emittedLen ? '\n\n' : '') + CONTEXT_UNAVAILABLE_RESPONSE);
+    fullResponse = CONTEXT_UNAVAILABLE_RESPONSE;
+  } else {
+    emitUpTo(fullResponse.length); // flush the held-back tail
+  }
+
+  console.info('Voice relay timing', { firstDeltaMs, totalMs: Date.now() - relayStartedAt });
+  return { fullResponse, inputTokens, outputTokens, estimatedCost: (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000), alreadyEmitted: true };
+}
+
 async function collectAnthropicStream(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -1553,12 +1629,17 @@ export default async function handler(req, res) {
 
     if (provider === 'hermes') {
       streamResult = await collectHermesStream(response);
+    } else if (voiceMode) {
+      // voice: guarded incremental relay so speech starts with the first sentence
+      streamResult = await relayAnthropicStreamWithGuard(response, res, systemPrompt, managedMessages);
     } else {
       streamResult = await collectAnthropicStream(response);
     }
 
-    const guardedResponse = guardKnownInventedBusinessFacts(streamResult.fullResponse, systemPrompt, managedMessages);
-    writeTextChunk(res, guardedResponse);
+    if (!streamResult.alreadyEmitted) {
+      const guardedResponse = guardKnownInventedBusinessFacts(streamResult.fullResponse, systemPrompt, managedMessages);
+      writeTextChunk(res, guardedResponse);
+    }
     writeDoneChunk(res, streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost);
     res.end();
 
