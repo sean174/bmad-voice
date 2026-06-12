@@ -48,7 +48,7 @@ assert(index.includes("url.searchParams.set('t', Date.now().toString(36))"), 're
 assert(index.includes('Session accepted. Build'), 'saved session probe should explain expected diagnostic statuses');
 assert(index.includes("fetch('/api/health')"), 'browser should show non-secret health diagnostics');
 assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sessionToken"), 'lifecycle resume should restore the session token');
-assert(manifest.includes('"start_url": "/?v=2026-06-12-1"'), 'PWA start_url should carry the current shell version');
+assert(manifest.includes('"start_url": "/?v=2026-06-12-2"'), 'PWA start_url should carry the current shell version');
 
 for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/manifest.json"']) {
   assert(vercel.includes(source), `vercel headers should include ${source}`);
