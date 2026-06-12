@@ -11,7 +11,7 @@ const source = fs.readFileSync(chatPath, 'utf8')
 
 const context = {
   console,
-  process: { env: {} },
+  process: { env: { CC_CONTEXT_CACHE_MS: '0' } }, // context cache off for assertions
   require,
   fetch: async () => {
     throw new Error('fetch should not be called by mode assertions');

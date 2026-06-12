@@ -2220,6 +2220,75 @@ if (SpeechRecognition && !isIOS) {
       }
     }
   });
+} else if (isIOS && navigator.mediaDevices && window.MediaRecorder) {
+  // iOS path: webkitSpeechRecognition freezes Safari PWAs, so record with
+  // MediaRecorder and transcribe server-side (Cartesia Ink) via /api/transcribe.
+  micBtn.style.display = 'flex';
+  let iosRecorder = null;
+  let iosChunks = [];
+  let iosStream = null;
+  let iosBusy = false;
+
+  async function iosStartRecording() {
+    try {
+      iosStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      showToast('Microphone permission needed', 'error');
+      return;
+    }
+    const mime = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    iosChunks = [];
+    iosRecorder = mime ? new MediaRecorder(iosStream, { mimeType: mime }) : new MediaRecorder(iosStream);
+    iosRecorder.ondataavailable = (e) => { if (e.data && e.data.size) iosChunks.push(e.data); };
+    iosRecorder.onstop = iosTranscribe;
+    iosRecorder.start();
+    isRecording = true;
+    micBtn.classList.add('recording');
+  }
+
+  async function iosTranscribe() {
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    if (iosStream) { iosStream.getTracks().forEach(t => t.stop()); iosStream = null; }
+    const type = (iosRecorder && iosRecorder.mimeType) || 'audio/mp4';
+    const blob = new Blob(iosChunks, { type });
+    iosChunks = [];
+    if (blob.size < 800) return; // too short to be speech
+    iosBusy = true;
+    micBtn.style.opacity = '0.5';
+    var __ph = messageInput.placeholder; messageInput.placeholder = 'Transcribing...';
+    try {
+      const resp = await apiFetch('/api/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': type },
+        body: blob,
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (resp.ok && json.text) {
+        const pre = messageInput.value.trim();
+        messageInput.value = pre ? pre + ' ' + json.text : json.text;
+        if (messageInput.value.trim()) sendMessage();
+      } else if (!json.empty) {
+        showToast(json.error || 'Could not transcribe', 'error');
+      }
+    } catch (e) {
+      showToast('Transcription failed', 'error');
+    } finally {
+      iosBusy = false;
+      micBtn.style.opacity = '';
+      messageInput.placeholder = __ph;
+    }
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (iosBusy) return;
+    if (isRecording && iosRecorder && iosRecorder.state === 'recording') {
+      iosRecorder.stop();
+    } else if (!isRecording) {
+      iosStartRecording();
+    }
+  });
 }
 
 // ---- MOBILE/PWA LIFECYCLE RECOVERY ----
@@ -2487,6 +2556,7 @@ async function _submitAsyncChatJob() {
 }
 
 async function _streamResponse() {
+  resetStreamSpeech();
 
   try {
     abortController = new AbortController();
@@ -2494,7 +2564,7 @@ async function _streamResponse() {
     const response = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conversationHistory, user_label: userLabel }),
+      body: JSON.stringify({ messages: conversationHistory, user_label: userLabel, voice: voiceEnabled === true }),
       signal: abortController.signal,
     });
 
@@ -2544,6 +2614,7 @@ async function _streamResponse() {
               }
               fullText += data.content;
               updateThinkingText(fullText);
+              if (voiceEnabled && hasChosenMode) feedStreamSpeech(data.content, false);
             }
             if (data.type === 'done' && data.usage) {
               totalInputTokens += data.usage.inputTokens;
@@ -2601,12 +2672,15 @@ async function _streamResponse() {
     await new Promise(r => setTimeout(r, 400));
     removeThinking();
 
+    if (voiceEnabled && hasChosenMode) feedStreamSpeech('', true); // flush the tail
+
     if (!hasChosenMode) {
       pendingAgentBlocks = agentBlocks;
       document.getElementById('voice-choice').classList.add('active');
     } else {
       displayAgentBlocks(agentBlocks);
-      if (voiceEnabled) playAgentAudio(agentBlocks);
+      // if streamed speech already spoke this reply, don't speak it twice
+      if (voiceEnabled && !spokeViaStream) playAgentAudio(agentBlocks);
     }
 
   } catch (err) {
@@ -2719,6 +2793,76 @@ async function prefetchAudio(block) {
   }
 }
 
+// ---- STREAMED SPEECH (voice mode) ----
+// Speak sentence-by-sentence WHILE the reply streams, instead of waiting for
+// the full text + full MP3. Time-to-first-sound drops to first-sentence time.
+let streamSpeechBuffer = '';
+let streamSpeechQueue = [];
+let streamPumpActive = false;
+let spokeViaStream = false;
+
+function resetStreamSpeech() {
+  streamSpeechBuffer = '';
+  streamSpeechQueue = [];
+  spokeViaStream = false;
+}
+
+function feedStreamSpeech(delta, flush) {
+  streamSpeechBuffer += delta;
+  // pull complete sentences off the front; keep the tail for next delta
+  const re = /[.!?\u2026]["')\]]*\s+/g;
+  let lastEnd = 0;
+  let m;
+  while ((m = re.exec(streamSpeechBuffer)) !== null) lastEnd = m.index + m[0].length;
+  let speakable = '';
+  if (lastEnd > 0) {
+    speakable = streamSpeechBuffer.slice(0, lastEnd);
+    streamSpeechBuffer = streamSpeechBuffer.slice(lastEnd);
+  }
+  if (flush && streamSpeechBuffer.trim()) {
+    speakable += streamSpeechBuffer;
+    streamSpeechBuffer = '';
+  }
+  speakable = speakable.replace('[INTERVIEW_COMPLETE]', '').trim();
+  if (!speakable || speakable.replace(/[^a-zA-Z0-9]/g, '').length < 2) return;
+  spokeViaStream = true;
+  // start synthesis immediately; playback stays sequential
+  streamSpeechQueue.push({ urlPromise: prefetchAudio({ agent: 'MASTERMIND', text: speakable }) });
+  pumpStreamSpeech();
+}
+
+async function pumpStreamSpeech() {
+  if (streamPumpActive) return;
+  streamPumpActive = true;
+  isPlaying = true;
+  showStopButton(true);
+  speakingLabel.textContent = 'Speaking...';
+  speakingLabel.style.display = 'block';
+  try {
+    while (streamSpeechQueue.length) {
+      if (!isPlaying) { streamSpeechQueue = []; break; }
+      const item = streamSpeechQueue.shift();
+      const audioUrl = await item.urlPromise;
+      if (!audioUrl || !isPlaying) continue;
+      await new Promise((resolve) => {
+        currentAudio = persistentAudio;
+        currentAudio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+        currentAudio.onerror = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+        currentAudio.src = audioUrl;
+        currentAudio.play().catch(() => { URL.revokeObjectURL(audioUrl); resolve(); });
+      });
+    }
+  } finally {
+    streamPumpActive = false;
+    if (!streamSpeechQueue.length) {
+      isPlaying = false;
+      showStopButton(false);
+      speakingLabel.style.display = 'none';
+      currentAudio = null;
+    }
+  }
+}
+
 async function playAgentAudio(blocks) {
   audioQueue = [...blocks];
   isPlaying = true;
@@ -2800,6 +2944,8 @@ document.addEventListener('keydown', (e) => {
 function stopAudio() {
   isPlaying = false;
   audioQueue = [];
+  streamSpeechQueue = [];
+  streamSpeechBuffer = '';
   if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; }
   showStopButton(false);
   speakingLabel.style.display = 'none';

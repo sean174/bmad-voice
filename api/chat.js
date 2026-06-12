@@ -469,7 +469,18 @@ function buildCommandCenterContextStatus(loaded, scope) {
   ].join('\n');
 }
 
+const __ccContextCache = new Map(); // mode -> {at, value}
+const CC_CONTEXT_TTL_MS = Number(process.env.CC_CONTEXT_CACHE_MS ?? 60000);
+
 async function getCommandCenterContext(mode = 'full') {
+  const cached = __ccContextCache.get(mode);
+  if (cached && Date.now() - cached.at < CC_CONTEXT_TTL_MS) return cached.value;
+  const value = await __getCommandCenterContextUncached(mode);
+  if (value && value.loaded) __ccContextCache.set(mode, { at: Date.now(), value });
+  return value;
+}
+
+async function __getCommandCenterContextUncached(mode = 'full') {
   const url = process.env.COMMAND_CENTER_CONTEXT_URL || '';
   const token = process.env.MASTERMIND_BRIDGE_TOKEN || '';
   const scope = mode === 'compact' ? 'compact' : 'full';
@@ -894,7 +905,18 @@ function getSseData(line) {
   return line.slice(5).trim();
 }
 
-async function startHermesStream(systemPrompt, managedMessages) {
+// Spoken-conversation style: short, plain, immediately speakable. Applied when
+// the request came from the voice loop so time-to-first-audio stays low.
+const VOICE_STYLE = `
+
+--- VOICE MODE (this exchange is spoken aloud) ---
+- Reply in 1-3 short sentences (under ~60 words) unless explicitly asked to go deep.
+- Plain spoken English. No markdown, no lists, no headers, no code blocks.
+- Lead with the answer; skip preamble and recaps.
+- End with at most one short question if one is genuinely needed.`;
+
+async function startHermesStream(systemPrompt, managedMessages, voice = false) {
+  if (voice) systemPrompt = systemPrompt + VOICE_STYLE;
   const config = getHermesConfig();
   const headers = {
     'Content-Type': 'application/json',
@@ -916,7 +938,8 @@ async function startHermesStream(systemPrompt, managedMessages) {
   });
 }
 
-async function startAnthropicStream(systemPrompt, managedMessages) {
+async function startAnthropicStream(systemPrompt, managedMessages, voice = false) {
+  if (voice) systemPrompt = systemPrompt + VOICE_STYLE;
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -925,8 +948,11 @@ async function startAnthropicStream(systemPrompt, managedMessages) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
+      model: 'claude-sonnet-4-6',
+      // Voice replies are short by design - a low cap + low effort cuts
+      // time-to-first-token and total generation time.
+      max_tokens: voice ? 1024 : 4096,
+      ...(voice ? { output_config: { effort: 'low' } } : {}),
       system: systemPrompt,
       messages: managedMessages,
       stream: true,
@@ -964,7 +990,7 @@ async function startAnthropicCompletion(systemPrompt, managedMessages) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: systemPrompt,
       messages: managedMessages,
@@ -1331,6 +1357,7 @@ export default async function handler(req, res) {
   }
 
   const { messages, user_label } = req.body;
+  const voiceMode = req.body && req.body.voice === true;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Messages array required' });
   }
@@ -1477,7 +1504,7 @@ export default async function handler(req, res) {
       provider = 'hermes';
       console.log('Chat brain provider: Hermes');
       try {
-        response = await startHermesStream(systemPrompt, managedMessages);
+        response = await startHermesStream(systemPrompt, managedMessages, voiceMode);
       } catch (e) {
         console.warn('Hermes brain request failed before stream');
         if (!hermesConfig.fallbackToAnthropic) {
@@ -1486,7 +1513,7 @@ export default async function handler(req, res) {
 
         provider = 'anthropic';
         console.log('Chat brain provider: Anthropic fallback');
-        response = await startAnthropicStream(systemPrompt, managedMessages);
+        response = await startAnthropicStream(systemPrompt, managedMessages, voiceMode);
       }
 
       if (provider === 'hermes' && !response.ok) {
@@ -1497,11 +1524,11 @@ export default async function handler(req, res) {
 
         provider = 'anthropic';
         console.log('Chat brain provider: Anthropic fallback');
-        response = await startAnthropicStream(systemPrompt, managedMessages);
+        response = await startAnthropicStream(systemPrompt, managedMessages, voiceMode);
       }
     } else {
       console.log('Chat brain provider: Anthropic');
-      response = await startAnthropicStream(systemPrompt, managedMessages);
+      response = await startAnthropicStream(systemPrompt, managedMessages, voiceMode);
     }
 
     if (!response.ok) {
