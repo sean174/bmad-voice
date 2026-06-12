@@ -5,6 +5,7 @@ export default function middleware(request) {
   if (
     url.pathname === '/' ||
     url.pathname === '/index.html' ||
+    url.pathname === '/voice.html' ||
     url.pathname === '/manifest.json' ||
     url.pathname === '/api/login' ||
     url.pathname === '/api/context' ||
