@@ -45,6 +45,7 @@ for (const value of [
 assert(chat.includes('export async function generateChatCompletion'), 'api/chat.js should export generateChatCompletion');
 assert(chat.includes('Ideas capture is the only allowed write path.'), 'chat safety boundary should remain');
 assert(chat.includes('Do not mutate Command Center projects, operations, decisions, delegations, or instructions.'), 'Hermes safety boundary should remain');
+assert(chat.includes('TOP_COMMAND_CENTER_PROJECTS'), 'Command Center top projects context should remain');
 
 for (const value of [
   "const PENDING_CHAT_JOB_KEY = 'mastermind_pending_chat_job'",
@@ -69,6 +70,50 @@ assert(!asyncJobFunction.includes('signal:'), 'async chat job should not abort a
 
 const visibleSurface = [index, fs.readFileSync(path.join(root, 'public', 'manifest.json'), 'utf8')].join('\n');
 assert(!/CEO Coach|Coach Mode/.test(visibleSurface), 'visible UI should not be rebranded to CEO Coach or Coach Mode');
+
+for (const value of [
+  'id="written-mode-btn"',
+  'Written Mode',
+  'id="voice-mode-btn"',
+  'Voice Mode',
+  'id="save-idea-btn"',
+  '>Save Idea<',
+  'id="idea-confirm-overlay"',
+  'id="idea-confirm-input"',
+  'id="idea-confirm-save-btn"',
+]) {
+  assert(index.includes(value), `public/index.html should include ${value}`);
+}
+
+const header = index.slice(index.indexOf('<div id="header">'), index.indexOf('<!-- End session overlay -->'));
+assert(header.includes('id="save-idea-btn"'), 'Save Idea button should be in the top header');
+
+const saveIdeaClick = index.slice(
+  index.indexOf("saveIdeaBtn.addEventListener('click'"),
+  index.indexOf("ideaCancelBtn.addEventListener('click'")
+);
+assert(saveIdeaClick.includes('openIdeaConfirm(getIdeaDraftForConfirmation())'), 'Save Idea should open confirm/edit flow');
+assert(!saveIdeaClick.includes('saveIdeaText('), 'Save Idea button should not save without explicit confirm');
+
+const ideaDraftFunction = index.slice(
+  index.indexOf('function getIdeaDraftForConfirmation()'),
+  index.indexOf('function openIdeaConfirm')
+);
+assert(ideaDraftFunction.includes('const typedDraft = messageInput.value.trim()'), 'Save Idea should inspect current typed draft first');
+assert(ideaDraftFunction.includes('if (typedDraft) return typedDraft'), 'Save Idea should prefer non-empty typed draft');
+assert(ideaDraftFunction.includes('return getLatestUserMessageText()'), 'Save Idea should fall back to latest user message');
+assert(index.includes("openIdeaConfirm(initialText = '')"), 'Save Idea confirm flow should support blank input');
+
+const confirmIdeaClick = index.slice(
+  index.indexOf("ideaConfirmSaveBtn.addEventListener('click'"),
+  index.indexOf('// ---- SEND MESSAGE ----')
+);
+assert(confirmIdeaClick.includes('await saveIdeaText(text)'), 'Confirm button should save through existing ideas API');
+assert(confirmIdeaClick.includes("setIdeaStatus('IDEA BANKED')"), 'Successful bridge save should show IDEA BANKED feedback');
+assert(index.includes("apiFetch('/api/ideas'"), 'Idea saving should use existing Mastermind ideas API bridge');
+assert(confirmIdeaClick.includes("showToast(e.message || 'Could not save idea.', 'error')"), 'Failed save should show a readable error');
+const confirmIdeaCatch = confirmIdeaClick.slice(confirmIdeaClick.indexOf('} catch (e) {'), confirmIdeaClick.indexOf('} finally {'));
+assert(!confirmIdeaCatch.includes('closeIdeaConfirm()'), 'Failed save should preserve the editable idea sheet');
 
 import(pathToFileURL(path.join(root, 'api', 'mastermind-chat-jobs.js')).href)
   .then(({ buildChatCompletionRequestForJob }) => {

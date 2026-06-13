@@ -306,6 +306,7 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
 
     #header-title {
@@ -376,6 +377,51 @@
       color: #fff;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .mode-toggle-pill {
+      display: flex;
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .mode-toggle-pill button {
+      padding: 8px 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+
+    .mode-toggle-pill button.active {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .mode-toggle-pill button:not(.active) {
+      background: var(--bg);
+      color: #fff;
+    }
+
+    #save-idea-btn {
+      padding: 8px 12px;
+      font-size: 9px;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
     /* End session overlay */
     #end-overlay {
       display: none;
@@ -443,6 +489,54 @@
       letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--text-dim);
+    }
+
+    #idea-confirm-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(8,8,8,0.95);
+      z-index: 260;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #idea-confirm-overlay.active {
+      display: flex;
+    }
+
+    .idea-confirm-sheet {
+      width: 100%;
+      max-width: 560px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      padding: 18px;
+      box-shadow: 0 0 28px rgba(232,51,42,0.12);
+    }
+
+    .idea-confirm-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    #idea-confirm-input {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .idea-confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+      margin-top: 12px;
     }
 
     #chat-area {
@@ -759,13 +853,6 @@
       padding: 0 20px 14px;
     }
 
-    #save-idea-btn {
-      padding: 8px 12px;
-      font-size: 9px;
-      letter-spacing: 2px;
-      white-space: nowrap;
-    }
-
     #idea-status {
       min-height: 14px;
       font-family: 'Space Mono', monospace;
@@ -773,6 +860,15 @@
       letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--text-dim);
+    }
+
+    #controls-wrap.written-mode #mic-btn {
+      display: none !important;
+    }
+
+    #controls-wrap.voice-mode #message-input {
+      border-color: var(--red);
+      box-shadow: 0 0 12px rgba(232,51,42,0.15);
     }
 
     /* Mic button */
@@ -1212,6 +1308,18 @@
       color: var(--text-mid);
       line-height: 1.4;
     }
+
+    @media (max-width: 720px) {
+      #header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+
+      .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1301,11 +1409,18 @@
         <div id="mode-label">Fast Mode</div>
       </div>
     </div>
-    <div class="voice-toggle-pill">
-      <button id="voice-off-btn" class="active">Voice Off</button>
-      <button id="voice-on-btn">Voice On</button>
+    <div class="header-actions">
+      <div class="mode-toggle-pill" aria-label="Input mode">
+        <button id="written-mode-btn" class="active" type="button">Written Mode</button>
+        <button id="voice-mode-btn" type="button">Voice Mode</button>
+      </div>
+      <div class="voice-toggle-pill">
+        <button id="voice-off-btn" class="active" type="button">Voice Off</button>
+        <button id="voice-on-btn" type="button">Voice On</button>
+      </div>
+      <button id="save-idea-btn" class="btn-secondary" type="button">Save Idea</button>
+      <button id="end-session-btn" class="btn-secondary" type="button" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
     </div>
-    <button id="end-session-btn" class="btn-secondary" style="padding:8px 14px; font-size:9px; letter-spacing:2px;">End</button>
   </div>
 
   <!-- End session overlay -->
@@ -1342,6 +1457,17 @@
     <button id="logout-now-btn" class="btn-secondary" style="display:none;">Log Out Now</button>
   </div>
 
+  <div id="idea-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="idea-confirm-title">
+    <div class="idea-confirm-sheet">
+      <div class="idea-confirm-title" id="idea-confirm-title">Confirm Idea</div>
+      <textarea id="idea-confirm-input" class="input-field" maxlength="10000" placeholder="Write the idea to save."></textarea>
+      <div class="idea-confirm-actions">
+        <button id="idea-cancel-btn" class="btn-secondary" type="button">Cancel</button>
+        <button id="idea-confirm-save-btn" class="btn-primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div id="voice-choice">
     <h2>Mastermind is ready.</h2>
     <div class="choice-buttons">
@@ -1360,7 +1486,7 @@
 
   <div id="chat-area"></div>
 
-  <div id="controls-wrap">
+  <div id="controls-wrap" class="written-mode">
     <div id="speaking-label"></div>
     <div id="controls">
       <input type="text" id="message-input" class="input-field" placeholder="What's on your mind?" maxlength="10000" autocomplete="off">
@@ -1368,7 +1494,6 @@
       <button id="send-btn" class="btn-primary">Send</button>
     </div>
     <div id="idea-row">
-      <button id="save-idea-btn" class="btn-secondary">Save Idea</button>
       <div id="idea-status" aria-live="polite"></div>
     </div>
     <div id="stop-bar" style="display:none; padding: 0 20px 16px;">
@@ -1471,6 +1596,7 @@ let totalOutputTokens = 0;
 let totalCartesiaChars = 0;
 let isPlaying = false;
 let voiceEnabled = false;
+let inputMode = 'written';
 let hasChosenMode = false;
 const VOICE_ENABLED_USERS = null; // voice enabled for all users
 let pendingAgentBlocks = null;
@@ -1497,6 +1623,10 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const saveIdeaBtn = document.getElementById('save-idea-btn');
 const ideaStatus = document.getElementById('idea-status');
+const ideaConfirmOverlay = document.getElementById('idea-confirm-overlay');
+const ideaConfirmInput = document.getElementById('idea-confirm-input');
+const ideaCancelBtn = document.getElementById('idea-cancel-btn');
+const ideaConfirmSaveBtn = document.getElementById('idea-confirm-save-btn');
 const stopBtn = document.getElementById('stop-btn');
 const stopBar = document.getElementById('stop-bar');
 const sessionCostEl = document.getElementById('session-cost');
@@ -1504,7 +1634,10 @@ const sessionTimerEl = document.getElementById('session-timer');
 const modeLabel = document.getElementById('mode-label');
 const speakingLabel = document.getElementById('speaking-label');
 const controlsEl = document.getElementById('controls');
+const controlsWrap = document.getElementById('controls-wrap');
 const sessionDiagnosticEl = document.getElementById('session-diagnostic');
+const writtenModeBtn = document.getElementById('written-mode-btn');
+const voiceModeBtn = document.getElementById('voice-mode-btn');
 
 // ---- NAVIGATION ----
 function showScreen(id) {
@@ -1542,6 +1675,8 @@ function handleUnauthorizedSession() {
   isWaiting = false;
   sendBtn.disabled = false;
   saveIdeaBtn.disabled = false;
+  ideaConfirmSaveBtn.disabled = false;
+  closeIdeaConfirm();
   showSessionDiagnostic('Session expired. Sign in again.', true);
   showScreen('login-screen');
   document.getElementById('login-error').textContent = 'Session expired. Sign in again.';
@@ -2120,34 +2255,77 @@ function logConversationExchange(userMessage, assistantMessage) {
   }).catch(console.error);
 }
 
-function getIdeaTextToSave() {
-  const start = messageInput.selectionStart;
-  const end = messageInput.selectionEnd;
-  if (typeof start === 'number' && typeof end === 'number' && end > start) {
-    return messageInput.value.slice(start, end).trim();
-  }
-
+function getLatestUserMessageText() {
   const lastUserMessage = [...conversationHistory].reverse().find(m => m.role === 'user');
   return lastUserMessage ? lastUserMessage.content.trim() : '';
 }
 
-saveIdeaBtn.addEventListener('click', async () => {
-  const text = getIdeaTextToSave();
+function getIdeaDraftForConfirmation() {
+  const typedDraft = messageInput.value.trim();
+  if (typedDraft) return typedDraft;
+  return getLatestUserMessageText();
+}
+
+function openIdeaConfirm(initialText = '') {
+  ideaConfirmInput.value = initialText;
+  ideaConfirmOverlay.classList.add('active');
+  setIdeaStatus(initialText ? 'Review idea before saving.' : 'Write idea to save.');
+  setTimeout(() => {
+    ideaConfirmInput.focus();
+    ideaConfirmInput.setSelectionRange(ideaConfirmInput.value.length, ideaConfirmInput.value.length);
+  }, 0);
+}
+
+function closeIdeaConfirm() {
+  ideaConfirmOverlay.classList.remove('active');
+}
+
+saveIdeaBtn.addEventListener('click', () => {
+  openIdeaConfirm(getIdeaDraftForConfirmation());
+});
+
+ideaCancelBtn.addEventListener('click', () => {
+  closeIdeaConfirm();
+  setIdeaStatus('');
+});
+
+ideaConfirmOverlay.addEventListener('click', (e) => {
+  if (e.target === ideaConfirmOverlay) {
+    closeIdeaConfirm();
+    setIdeaStatus('');
+  }
+});
+
+ideaConfirmInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeIdeaConfirm();
+    setIdeaStatus('');
+  }
+});
+
+ideaConfirmSaveBtn.addEventListener('click', async () => {
+  const text = ideaConfirmInput.value.trim();
   if (!text) {
-    setIdeaStatus('Select or send an idea first.');
+    setIdeaStatus('Enter an idea first.');
+    ideaConfirmInput.focus();
     return;
   }
 
   saveIdeaBtn.disabled = true;
+  ideaConfirmSaveBtn.disabled = true;
   setIdeaStatus('Saving...');
 
   try {
     await saveIdeaText(text);
-    setIdeaStatus('Saved to ideas.');
+    setIdeaStatus('IDEA BANKED');
+    showToast('IDEA BANKED', 'success');
+    closeIdeaConfirm();
   } catch (e) {
     setIdeaStatus(e.message || 'Could not save idea.');
+    showToast(e.message || 'Could not save idea.', 'error');
   } finally {
     saveIdeaBtn.disabled = false;
+    ideaConfirmSaveBtn.disabled = false;
   }
 });
 
@@ -3153,6 +3331,41 @@ function updateVoiceToggle() {
   voiceOffBtn.classList.toggle('active', !voiceEnabled);
 }
 
+function stopVoiceCaptureForModeSwitch() {
+  if (!isRecording) return;
+  suppressNextRecognitionSend = true;
+  isRecording = false;
+  micBtn.classList.remove('recording');
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (e) {}
+  }
+}
+
+function updateInputModeToggle() {
+  const isVoiceMode = inputMode === 'voice';
+  voiceModeBtn.classList.toggle('active', isVoiceMode);
+  writtenModeBtn.classList.toggle('active', !isVoiceMode);
+  controlsWrap.classList.toggle('voice-mode', isVoiceMode);
+  controlsWrap.classList.toggle('written-mode', !isVoiceMode);
+  messageInput.placeholder = isVoiceMode ? 'Speak or type to Mastermind.' : "What's on your mind?";
+}
+
+function setInputMode(mode) {
+  inputMode = mode === 'voice' ? 'voice' : 'written';
+  if (inputMode === 'voice') {
+    voiceEnabled = true;
+    unlockAudio();
+  } else {
+    voiceEnabled = false;
+    stopVoiceCaptureForModeSwitch();
+    stopAudio();
+  }
+  updateInputModeToggle();
+  updateVoiceToggle();
+}
+
 voiceOffBtn.addEventListener('click', () => {
   voiceEnabled = false;
   updateVoiceToggle();
@@ -3163,6 +3376,9 @@ voiceOnBtn.addEventListener('click', () => {
   voiceEnabled = true;
   updateVoiceToggle();
 });
+
+writtenModeBtn.addEventListener('click', () => setInputMode('written'));
+voiceModeBtn.addEventListener('click', () => setInputMode('voice'));
 
 // ---- VOICE CHOICE (first message) ----
 function unlockAudio() {
@@ -3175,10 +3391,8 @@ function unlockAudio() {
 }
 
 function handleVoiceChoice(listen) {
-  if (listen) unlockAudio();
   hasChosenMode = true;
-  voiceEnabled = listen;
-  updateVoiceToggle();
+  setInputMode(listen ? 'voice' : 'written');
   document.getElementById('voice-choice').classList.remove('active');
 
   if (pendingAgentBlocks) {
