@@ -8,6 +8,7 @@ const chatJob = fs.readFileSync(path.join(root, 'api', 'chat-job.js'), 'utf8');
 const chatJobs = fs.readFileSync(path.join(root, 'api', 'mastermind-chat-jobs.js'), 'utf8');
 const chat = fs.readFileSync(path.join(root, 'api', 'chat.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+const voice = fs.readFileSync(path.join(root, 'public', 'voice.html'), 'utf8');
 
 for (const value of [
   'background_continuation: true',
@@ -104,6 +105,14 @@ assert(ideaDraftFunction.includes('if (typedDraft) return typedDraft'), 'Save Id
 assert(ideaDraftFunction.includes('return getLatestUserMessageText()'), 'Save Idea should fall back to latest user message');
 assert(index.includes("openIdeaConfirm(initialText = '')"), 'Save Idea confirm flow should support blank input');
 
+const saveIdeaTextFunction = index.slice(
+  index.indexOf('async function saveIdeaText(text)'),
+  index.indexOf('function logConversationExchange')
+);
+assert(saveIdeaTextFunction.includes("apiFetch('/api/ideas'"), 'Save Idea helper should call existing ideas API');
+assert(saveIdeaTextFunction.includes('session_id: ensureSessionId()'), 'Save Idea payload should include an initialized session_id');
+assert(!saveIdeaTextFunction.includes('session_id: sessionId'), 'Save Idea payload should not send the nullable sessionId variable');
+
 const confirmIdeaClick = index.slice(
   index.indexOf("ideaConfirmSaveBtn.addEventListener('click'"),
   index.indexOf('// ---- SEND MESSAGE ----')
@@ -114,6 +123,10 @@ assert(index.includes("apiFetch('/api/ideas'"), 'Idea saving should use existing
 assert(confirmIdeaClick.includes("showToast(e.message || 'Could not save idea.', 'error')"), 'Failed save should show a readable error');
 const confirmIdeaCatch = confirmIdeaClick.slice(confirmIdeaClick.indexOf('} catch (e) {'), confirmIdeaClick.indexOf('} finally {'));
 assert(!confirmIdeaCatch.includes('closeIdeaConfirm()'), 'Failed save should preserve the editable idea sheet');
+
+assert(voice.includes('<a href="/?mastermind=1">◂ CHAT</a>'), '8-bit Chat link should target the current Mastermind chat interface');
+assert(index.includes("__routeParams.get('mastermind') === '1'"), 'current Mastermind route should pin chat on mobile');
+assert(index.includes("__routeParams.get('chat') === '1'"), 'legacy chat route should remain accepted for compatibility');
 
 import(pathToFileURL(path.join(root, 'api', 'mastermind-chat-jobs.js')).href)
   .then(({ buildChatCompletionRequestForJob }) => {

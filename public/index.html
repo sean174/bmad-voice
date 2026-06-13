@@ -1569,17 +1569,18 @@ const AGENT_AVATARS = {
 
 // ---- STATE ----
 // ---- VOICE-FIRST ROUTING (mobile) ----
-// On phones the voice orb IS the app. The classic chat UI stays one tap away
-// via ?chat=1 (the voice page's back link), which pins chat for the session.
+// On phones the voice orb IS the app. The current chat UI stays one tap away
+// via ?mastermind=1 (the voice page's back link), which pins chat for the session.
 const __isMobileUA = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
-if (new URLSearchParams(window.location.search).get('chat') === '1') {
+const __routeParams = new URLSearchParams(window.location.search);
+if (__routeParams.get('mastermind') === '1' || __routeParams.get('chat') === '1') {
   try { sessionStorage.setItem('prefer_chat', '1'); } catch (e) {}
 }
 if (
   __isMobileUA &&
   localStorage.getItem('bmad_token') &&
   !sessionStorage.getItem('prefer_chat') &&
-  new URLSearchParams(window.location.search).get('reset') !== '1'
+  __routeParams.get('reset') !== '1'
 ) {
   window.location.replace('/voice.html');
 }
@@ -2220,7 +2221,7 @@ async function saveIdeaText(text) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       text,
-      session_id: sessionId,
+      session_id: ensureSessionId(),
       tags: ['phase-0'],
       meta: {
         user_label: userLabel,
