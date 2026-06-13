@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const vm = require('vm');
 
 const chatPath = path.join(__dirname, '..', 'api', 'chat.js');
@@ -121,13 +122,16 @@ assert(compact.includes('top_priorities: ["Protect Command Center access","Advan
 assert(compact.includes('current_constraint: Travel access is blocking normal Command Center work.'));
 assert(compact.includes('weekly_focus: Restore secure access and keep revenue projects moving.'));
 assert(compact.includes('do_not_distract: ["Low-leverage UI polish"]'));
+assert(compact.includes('TOP_COMMAND_CENTER_PROJECTS:'));
+assert(compact.includes('rank 1: Command Center Security + Travel Access | status: blocked | owner: Sean | priority: P0'));
+assert(compact.includes('rank 2: Advisor Intent Router + Sales Bot | status: active | owner: Sean | priority: P1'));
+assert(compact.indexOf('TOP_COMMAND_CENTER_PROJECTS:') < compact.indexOf('sources:'));
 assert(compact.includes('ranked_projects_from_command_center:'));
 assert(compact.includes('rank: 1 | name: Command Center Security + Travel Access | status: blocked'));
 assert(compact.includes('rank: 2 | name: Advisor Intent Router + Sales Bot | status: active'));
 assert(compact.includes('rank: 4 | name: SMS Bot to Aged Roth Leads | status: active'));
 assert(compact.includes('instruction: If Sean asks for top projects'));
-assert(compact.includes('projects_sorted_by_rank:'));
-assert(compact.includes('- none provided'));
+assert(!compact.includes('projects_sorted_by_rank:\n- none provided'));
 assert(compact.includes('top_projects:'));
 assert(compact.includes('Enrollment Sprint'));
 assert(compact.includes('recent_dashboard_events:'));
@@ -187,11 +191,13 @@ for (const value of [
   'current_constraint: Show rate needs qualification improvements.',
   'weekly_focus: Tighten appointment quality.',
   'do_not_distract: ["New offer sprawl"]',
+  'TOP_COMMAND_CENTER_PROJECTS:',
+  'rank 1: Ranked Advisor Pipeline | status: active | owner: Sean | priority: P1',
+  'rank 2: Delivery Capacity Guardrails | status: active | owner: Team | priority: P2',
   'ranked_projects_from_command_center:',
   'rank: 1 | name: Ranked Advisor Pipeline | status: active',
   'rank: 2 | name: Delivery Capacity Guardrails | status: active',
   'instruction: If Sean asks for top projects',
-  'projects_sorted_by_rank:',
   'top_projects:',
   'Advisor Pipeline',
   'active_operations:',
@@ -244,32 +250,73 @@ async function runPrepareAssertions() {
     return {
       ok: true,
       json: async () => ({
-        data: {
-          generated_at: '2026-06-07T00:00:00Z',
-          scope: 'full-business',
-          projects_sorted_by_rank: false,
-          projects: [
-            { rank: 2, name: 'Lower Ranked Live Project', status: 'active', owner: 'Sean' },
-            { rank: 1, name: 'Highest Ranked Live Project', status: 'blocked', owner: 'Sean', priority: 'P0' },
-          ],
-        },
+        generated_at: '2026-06-07T00:00:00Z',
+        scope: 'full-business',
+        projects_sorted_by_rank: false,
+        projects: [
+          { rank: 2, name: 'Lower Ranked Live Project', status: 'active', owner: 'Sean' },
+          { rank: 1, name: 'Highest Ranked Live Project', status: 'blocked', owner: 'Sean', priority: 'P0' },
+          { rank: 3, name: 'Observed Live Project 3', status: 'active', owner: 'Sean' },
+          { rank: 4, name: 'Observed Live Project 4', status: 'active', owner: 'Team' },
+          { rank: 5, name: 'Observed Live Project 5', status: 'active', owner: 'Team' },
+          { rank: 6, name: 'Observed Live Project 6', status: 'active', owner: 'Team' },
+          { rank: 7, name: 'Observed Live Project 7', status: 'active', owner: 'Team' },
+          { rank: 8, name: 'Observed Live Project 8', status: 'active', owner: 'Team' },
+          { rank: 9, name: 'Observed Live Project 9', status: 'active', owner: 'Team' },
+          { rank: 10, name: 'Observed Live Project 10', status: 'active', owner: 'Team' },
+        ],
       }),
     };
   };
 
-  const prepared = await context.prepareChatRequest({
-    mode: 'fast',
+  const { buildChatCompletionRequestForJob } = await import(
+    pathToFileURL(path.join(__dirname, '..', 'api', 'mastermind-chat-jobs.js')).href
+  );
+  const asyncJobPreparedRequest = buildChatCompletionRequestForJob({
+    job_id: 'hermes-live-context-test-1781353154049',
+    session_id: 'session-live-context',
     user_label: 'sean',
-    messages: [{ role: 'user', content: 'What are my top projects?' }],
+    request: { mode: 'fast', user_label: 'unknown', messages: [] },
+    messages: [{ role: 'user', content: 'name the top Command Center projects you can see' }],
   });
+
+  assert.strictEqual(asyncJobPreparedRequest.mode, 'fast');
+  assert.strictEqual(asyncJobPreparedRequest.user_label, 'sean');
+  assert.deepStrictEqual(asyncJobPreparedRequest.messages, [
+    { role: 'user', content: 'name the top Command Center projects you can see' },
+  ]);
+
+  const prepared = await context.prepareChatRequest(asyncJobPreparedRequest);
 
   assert.strictEqual(bridgeFetchCount, 1, 'fast mode should fetch Command Center context for lowercase admin label');
   assert(prepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_STATUS: loaded'));
   assert(prepared.systemPrompt.includes('COMMAND_CENTER_CONTEXT_SCOPE: compact'));
+  assert(prepared.systemPrompt.includes('The Command Center context is loaded and visible in this prompt.'));
+  assert(prepared.systemPrompt.includes('treat rows in TOP_COMMAND_CENTER_PROJECTS and ranked_projects_from_command_center as visible usable evidence'));
   assert(prepared.systemPrompt.includes('--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---'));
+  assert(prepared.systemPrompt.includes('TOP_COMMAND_CENTER_PROJECTS:'));
+  assert(prepared.systemPrompt.includes('rank 1: Highest Ranked Live Project | status: blocked | owner: Sean | priority: P0'));
+  assert(prepared.systemPrompt.includes('rank 2: Lower Ranked Live Project | status: active | owner: Sean'));
+  assert(prepared.systemPrompt.includes('rank 8: Observed Live Project 8 | status: active | owner: Team'));
+  assert(!prepared.systemPrompt.includes('rank 9: Observed Live Project 9'), 'top project block should keep the ranked project section capped at eight rows');
   assert(prepared.systemPrompt.includes('ranked_projects_from_command_center:'));
   assert(prepared.systemPrompt.includes('rank: 1 | name: Highest Ranked Live Project | status: blocked'));
   assert(prepared.systemPrompt.includes('rank: 2 | name: Lower Ranked Live Project | status: active'));
+  assert(prepared.systemPrompt.includes('rank: 8 | name: Observed Live Project 8 | status: active'));
+  assert(!prepared.systemPrompt.includes('Observed Live Project 9'), 'compact context should keep the ranked project section capped at eight rows');
+  assert(!prepared.systemPrompt.includes('appears to be cut off'), 'loaded compact prompt should not imply the ranked-project context is cut off');
+  assert(!prepared.systemPrompt.includes('section appears'), 'loaded compact prompt should not prime the failed ranked-project phrasing');
+  assert(!prepared.systemPrompt.includes('projects_sorted_by_rank:\n- none provided'), 'boolean projects_sorted_by_rank flag should not add a contradictory empty ranked-project section');
+  assert(
+    prepared.systemPrompt.indexOf('COMMAND_CENTER_CONTEXT_STATUS: loaded') <
+      prepared.systemPrompt.indexOf('TOP_COMMAND_CENTER_PROJECTS:'),
+    'top project block should appear after loaded status'
+  );
+  assert(
+    prepared.systemPrompt.indexOf('TOP_COMMAND_CENTER_PROJECTS:') <
+      prepared.systemPrompt.indexOf('ranked_projects_from_command_center:'),
+    'top project block should appear before verbose ranked project rows'
+  );
   assert(
     prepared.systemPrompt.indexOf('rank: 1 | name: Highest Ranked Live Project') <
       prepared.systemPrompt.indexOf('rank: 2 | name: Lower Ranked Live Project'),

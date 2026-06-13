@@ -162,9 +162,28 @@ export async function markJobFailed(pool, jobId, message) {
   );
 }
 
+export function buildChatCompletionRequestForJob(job) {
+  const request = job && job.request && typeof job.request === 'object' && !Array.isArray(job.request)
+    ? { ...job.request }
+    : {};
+  const rowUserLabel = String(job?.user_label || '').trim();
+  const requestUserLabel = String(request.user_label || '').trim();
+  const rowMessages = Array.isArray(job?.messages) ? job.messages : [];
+  const requestMessages = Array.isArray(request.messages) ? request.messages : [];
+
+  return {
+    ...request,
+    session_id: request.session_id || job?.session_id || null,
+    user_label: requestUserLabel && requestUserLabel !== 'unknown'
+      ? requestUserLabel
+      : rowUserLabel || requestUserLabel || 'unknown',
+    messages: requestMessages.length > 0 ? requestMessages : rowMessages,
+  };
+}
+
 export async function runClaimedJob(pool, job) {
   try {
-    const result = await generateChatCompletion(job.request || {});
+    const result = await generateChatCompletion(buildChatCompletionRequestForJob(job));
     await markJobCompleted(pool, job.job_id, result.assistant_message || '');
     return { status: 'completed', job_id: job.job_id };
   } catch (err) {

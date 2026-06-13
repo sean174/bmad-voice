@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 const root = path.join(__dirname, '..');
 const chatJob = fs.readFileSync(path.join(root, 'api', 'chat-job.js'), 'utf8');
@@ -30,6 +31,7 @@ for (const value of [
 
 for (const value of [
   'generateChatCompletion',
+  'buildChatCompletionRequestForJob',
   'FOR UPDATE SKIP LOCKED',
   "status = 'queued'",
   "status = 'running' AND updated_at < NOW()",
@@ -68,4 +70,46 @@ assert(!asyncJobFunction.includes('signal:'), 'async chat job should not abort a
 const visibleSurface = [index, fs.readFileSync(path.join(root, 'public', 'manifest.json'), 'utf8')].join('\n');
 assert(!/CEO Coach|Coach Mode/.test(visibleSurface), 'visible UI should not be rebranded to CEO Coach or Coach Mode');
 
-console.log('Chat job assertions passed');
+import(pathToFileURL(path.join(root, 'api', 'mastermind-chat-jobs.js')).href)
+  .then(({ buildChatCompletionRequestForJob }) => {
+    const messages = [{ role: 'user', content: 'What live Command Center context do you have?' }];
+    const repairedMissingLabel = buildChatCompletionRequestForJob({
+      job_id: 'job-lowercase-sean',
+      session_id: 'session-live-context',
+      user_label: 'sean',
+      request: { mode: 'deep' },
+      messages,
+    });
+
+    assert.strictEqual(repairedMissingLabel.user_label, 'sean');
+    assert.strictEqual(repairedMissingLabel.session_id, 'session-live-context');
+    assert.deepStrictEqual(repairedMissingLabel.messages, messages);
+
+    const repairedUnknownLabel = buildChatCompletionRequestForJob({
+      job_id: 'job-unknown-request-label',
+      session_id: 'session-live-context',
+      user_label: 'sean',
+      request: { mode: 'fast', user_label: 'unknown', messages: [] },
+      messages,
+    });
+
+    assert.strictEqual(repairedUnknownLabel.user_label, 'sean');
+    assert.deepStrictEqual(repairedUnknownLabel.messages, messages);
+
+    const preservesExplicitRequestLabel = buildChatCompletionRequestForJob({
+      job_id: 'job-explicit-label',
+      session_id: 'session-live-context',
+      user_label: 'Sean',
+      request: { mode: 'fast', user_label: ' SEAN ', messages },
+      messages: [],
+    });
+
+    assert.strictEqual(preservesExplicitRequestLabel.user_label, 'SEAN');
+    assert.deepStrictEqual(preservesExplicitRequestLabel.messages, messages);
+
+    console.log('Chat job assertions passed');
+  })
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });

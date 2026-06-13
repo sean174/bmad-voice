@@ -192,6 +192,40 @@ function appendList(lines, title, items, fields, limit = 12) {
   }
 }
 
+function appendListIfAny(lines, title, items, fields, limit = 12) {
+  const list = asArray(items).slice(0, limit);
+  if (list.length === 0) return;
+
+  lines.push(`${title}:`);
+  for (const item of list) {
+    const text = compactItem(item, fields);
+    if (text) lines.push(`- ${text}`);
+  }
+}
+
+function appendTopCommandCenterProjects(lines, data, limit = 8) {
+  const rankedProjects = getRankedProjects(data).slice(0, limit);
+  lines.push('TOP_COMMAND_CENTER_PROJECTS:');
+  if (rankedProjects.length === 0) {
+    lines.push('- none provided');
+    return;
+  }
+
+  for (const project of rankedProjects) {
+    if (!project || typeof project !== 'object') continue;
+    const rank = project.rank !== null && project.rank !== undefined && project.rank !== ''
+      ? project.rank
+      : 'unranked';
+    const name = project.name || project.title || project.id || '';
+    if (!name) continue;
+    const details = [`rank ${rank}: ${name}`];
+    if (project.status) details.push(`status: ${project.status}`);
+    if (project.owner) details.push(`owner: ${project.owner}`);
+    if (project.priority) details.push(`priority: ${project.priority}`);
+    lines.push(`- ${details.join(' | ')}`);
+  }
+}
+
 function getNested(root, path) {
   return path.split('.').reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), root);
 }
@@ -353,14 +387,15 @@ function formatCommandCenterContext(raw) {
     '--- LIVE COMMAND CENTER CONTEXT (read-only) ---',
     `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
-    'instruction: If Sean asks for top projects, answer from ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
+    'instruction: If Sean asks for top projects, answer from TOP_COMMAND_CENTER_PROJECTS first, then ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
   ];
 
+  appendTopCommandCenterProjects(lines, data, 8);
   appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'type', 'updated_at', 'updatedAt', 'timestamp', 'generated_at', 'url', 'path']);
   appendObject(lines, 'source_timestamps', sourceTimestamps);
   appendCurrentPriorities(lines, data);
   appendList(lines, 'ranked_projects_from_command_center', getRankedProjects(data), ['rank', 'name', 'title', 'status', 'owner', 'priority', 'summary', 'next_step', 'id'], 8);
-  appendList(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
+  appendListIfAny(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
   appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects_sorted_by_rank', 'ranked_projects', 'projects.ranked', 'projects']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'updated_at', 'updatedAt', 'summary', 'next_step']);
   appendList(lines, 'active_operations', pickContextArray(data, ['active_operations', 'operations.active', 'operations', 'ops']), ['name', 'title', 'status', 'owner', 'summary', 'next_step', 'updated_at']);
   appendList(lines, 'blockers', pickContextArray(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on', 'next_step']);
@@ -409,15 +444,16 @@ function formatCompactCommandCenterContext(raw) {
     '--- COMPACT COMMAND CENTER CONTEXT (read-only, fast voice) ---',
     `generated_at: ${data.generated_at || data.generatedAt || data.timestamp || 'unknown'}`,
     `scope: ${data.scope || data.context_scope || 'unknown'}`,
-    'instruction: If Sean asks for top projects, answer from ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
+    'instruction: If Sean asks for top projects, answer from TOP_COMMAND_CENTER_PROJECTS first, then ranked_projects_from_command_center or projects by ascending rank. Do not ask Sean to provide the list unless those sections are empty.',
   ];
 
+  appendTopCommandCenterProjects(lines, data, 8);
   appendList(lines, 'sources', pickContextArray(data, ['sources', 'source_list', 'sourceList']), ['name', 'title', 'updated_at', 'updatedAt', 'timestamp'], 5);
   appendObject(lines, 'source_timestamps', sourceTimestamps, 8);
   appendObject(lines, 'kpi_headlines', kpis, 10);
   appendCurrentPriorities(lines, data);
   appendList(lines, 'ranked_projects_from_command_center', getRankedProjects(data), ['rank', 'name', 'title', 'status', 'owner', 'priority', 'summary', 'next_step', 'id'], 8);
-  appendList(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'next_step'], 8);
+  appendListIfAny(lines, 'projects_sorted_by_rank', pickContextArray(data, ['projects_sorted_by_rank', 'ranked_projects', 'projects.ranked']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'next_step'], 8);
   appendList(lines, 'top_projects', pickContextArray(data, ['top_projects', 'priority_projects', 'current_projects', 'projects.top', 'projects.priority', 'projects_sorted_by_rank', 'ranked_projects', 'projects.ranked', 'projects']), ['name', 'title', 'priority', 'rank', 'status', 'owner', 'summary', 'next_step'], 8);
   appendList(lines, 'active_blockers', pickContextArray(data, ['blockers', 'active_blockers', 'risks', 'stuck_items', 'constraints']), ['name', 'title', 'status', 'owner', 'summary', 'blocked_on'], 6);
   appendList(lines, 'pending_decisions', pickContextArray(data, ['pending_decisions', 'decisions.pending', 'open_decisions', 'decisions']), ['name', 'title', 'status', 'owner', 'summary', 'question'], 6);
@@ -464,7 +500,7 @@ function buildCommandCenterContextStatus(loaded, scope) {
     `COMMAND_CENTER_CONTEXT_STATUS: ${loaded ? 'loaded' : 'absent'}`,
     `COMMAND_CENTER_CONTEXT_SCOPE: ${loaded ? scope : 'none'}`,
     loaded
-      ? 'instruction: Answer business-state questions only from loaded context, user messages, or explicit reference docs. If a requested field is absent, say it is not present in the loaded context.'
+      ? 'instruction: The Command Center context is loaded and visible in this prompt. Answer business-state questions only from loaded context, user messages, or explicit reference docs. For top project questions, treat rows in TOP_COMMAND_CENTER_PROJECTS and ranked_projects_from_command_center as visible usable evidence and answer from them by ascending rank. If a requested field is absent, say it is not present in the loaded context.'
       : 'instruction: For current projects, rankings, KPIs, goals, operations, decisions, or business state, say the data is not loaded or not visible in the current Command Center context. Do not guess, estimate, infer, fabricate examples, or ask Sean to retype business state. Say the Command Center context bridge needs fixing or refreshing when relevant.',
   ].join('\n');
 }
