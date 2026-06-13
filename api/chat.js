@@ -471,6 +471,7 @@ function buildCommandCenterContextStatus(loaded, scope) {
 
 const __ccContextCache = new Map(); // mode -> {at, value}
 const CC_CONTEXT_TTL_MS = Number(process.env.CC_CONTEXT_CACHE_MS ?? 60000);
+const CC_CONTEXT_FETCH_TIMEOUT_MS = Number(process.env.CC_CONTEXT_FETCH_TIMEOUT_MS || 15000);
 
 async function getCommandCenterContext(mode = 'full') {
   const cached = __ccContextCache.get(mode);
@@ -487,7 +488,7 @@ async function __getCommandCenterContextUncached(mode = 'full') {
   if (!url || !token) return { text: '', loaded: false, scope };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 7000);
+  const timeout = setTimeout(() => controller.abort(), CC_CONTEXT_FETCH_TIMEOUT_MS);
   try {
     const response = await fetch(url, {
       method: 'GET',

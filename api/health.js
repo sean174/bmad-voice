@@ -1,3 +1,5 @@
+const COMMAND_CENTER_CONTEXT_PROBE_TIMEOUT_MS = Number(process.env.COMMAND_CENTER_CONTEXT_PROBE_TIMEOUT_MS || 10000);
+
 function getContextData(raw) {
   return raw && typeof raw === 'object' && raw.data && typeof raw.data === 'object'
     ? raw.data
@@ -33,7 +35,7 @@ async function probeCommandCenterContext() {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
+  const timeout = setTimeout(() => controller.abort(), COMMAND_CENTER_CONTEXT_PROBE_TIMEOUT_MS);
   try {
     const response = await fetch(url, {
       method: 'GET',

@@ -93,9 +93,11 @@ assert(!/process\.env\.(COMMAND_CENTER_CONTEXT_URL|COMMAND_CENTER_IDEAS_URL|MAST
 assert(health.includes('Boolean(process.env.'), 'health checks should report booleans instead of env values');
 assert(!/:\s*process\.env\.[A-Z0-9_]+/.test(health), 'health response must not return raw env values');
 assert(health.includes('probeCommandCenterContext'), 'health should include a session-gated Command Center bridge probe');
+assert(health.includes('COMMAND_CENTER_CONTEXT_PROBE_TIMEOUT_MS'), 'health bridge probe should use a named, configurable timeout');
 assert(health.includes("req.query?.bridge === '1'"), 'bridge probe should be explicitly requested');
 assert(health.includes('sessionAuthenticated'), 'health should report whether the supplied session token matched');
 assert(health.includes('commandCenterContextLive'), 'health should expose non-secret live context bridge status');
+assert(chat.includes('CC_CONTEXT_FETCH_TIMEOUT_MS'), 'chat context bridge fetch should use a named, configurable timeout');
 
 for (const key of [
   'authConfigured',
