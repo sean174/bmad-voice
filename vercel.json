@@ -1,5 +1,12 @@
 {
   "version": 2,
+  "redirects": [
+    {
+      "source": "/voice.html",
+      "destination": "/?mastermind=1&chat=1&v=2026-06-13-2",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/",
@@ -21,6 +28,15 @@
     },
     {
       "source": "/voice.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/voice-legacy.html",
       "headers": [
         {
           "key": "Cache-Control",

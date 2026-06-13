@@ -9,6 +9,8 @@ const chatJobs = fs.readFileSync(path.join(root, 'api', 'mastermind-chat-jobs.js
 const chat = fs.readFileSync(path.join(root, 'api', 'chat.js'), 'utf8');
 const index = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
 const voice = fs.readFileSync(path.join(root, 'public', 'voice.html'), 'utf8');
+const legacyVoice = fs.readFileSync(path.join(root, 'public', 'voice-legacy.html'), 'utf8');
+const vercelConfig = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 
 for (const value of [
   'background_continuation: true',
@@ -124,14 +126,20 @@ assert(confirmIdeaClick.includes("showToast(e.message || 'Could not save idea.',
 const confirmIdeaCatch = confirmIdeaClick.slice(confirmIdeaClick.indexOf('} catch (e) {'), confirmIdeaClick.indexOf('} finally {'));
 assert(!confirmIdeaCatch.includes('closeIdeaConfirm()'), 'Failed save should preserve the editable idea sheet');
 
-assert(voice.includes('id="chat-link"'), '8-bit Chat link should be script-addressable');
-assert(voice.includes("params.get('legacy_voice') === '1'"), 'legacy 8-bit voice app should require explicit opt-in');
-assert(voice.includes('window.location.replace(url.toString())'), 'default /voice.html entry should route into the current root UI');
-assert(voice.includes('href="/?mastermind=1&chat=1&v='), '8-bit Chat link should target the current Mastermind chat interface with cache busting');
-assert(voice.includes("sessionStorage.setItem('prefer_chat', '1')"), '8-bit Chat click should pin chat before navigating');
-assert(voice.includes("url.searchParams.set('mastermind', '1')"), '8-bit Chat click should keep the current Mastermind route');
-assert(voice.includes("url.searchParams.set('chat', '1')"), '8-bit Chat click should preserve legacy chat route compatibility');
-assert(voice.includes("url.searchParams.set('t', Date.now().toString(36))"), '8-bit Chat click should include a navigation cache buster');
+const voiceRedirect = (vercelConfig.redirects || []).find((redirect) => redirect.source === '/voice.html');
+assert(voiceRedirect, 'vercel config should redirect /voice.html before the legacy document can render');
+assert.strictEqual(voiceRedirect.destination, '/?mastermind=1&chat=1&v=2026-06-13-2', '/voice.html should route into the current root UI at the edge');
+assert(!voice.includes('window.location.replace'), 'default /voice.html should not depend on a client-side redirect script');
+assert(!voice.includes('id="orb"'), 'default /voice.html should not contain the 8-bit app');
+assert(voice.includes('/?mastermind=1&chat=1&v=2026-06-13-2'), 'static /voice.html fallback should still point at the current Mastermind chat UI');
+assert(legacyVoice.includes('id="chat-link"'), '8-bit Chat link should be script-addressable');
+assert(legacyVoice.includes("window.location.pathname === '/voice-legacy.html'"), 'explicit legacy voice route should render the 8-bit app');
+assert(legacyVoice.includes("params.get('legacy_voice') === '1'"), 'legacy 8-bit voice query opt-in should remain supported');
+assert(legacyVoice.includes('href="/?mastermind=1&chat=1&v='), '8-bit Chat link should target the current Mastermind chat interface with cache busting');
+assert(legacyVoice.includes("sessionStorage.setItem('prefer_chat', '1')"), '8-bit Chat click should pin chat before navigating');
+assert(legacyVoice.includes("url.searchParams.set('mastermind', '1')"), '8-bit Chat click should keep the current Mastermind route');
+assert(legacyVoice.includes("url.searchParams.set('chat', '1')"), '8-bit Chat click should preserve legacy chat route compatibility');
+assert(legacyVoice.includes("url.searchParams.set('t', Date.now().toString(36))"), '8-bit Chat click should include a navigation cache buster');
 assert(index.includes("__routeParams.get('mastermind') === '1'"), 'current Mastermind route should pin chat on mobile');
 assert(index.includes("__routeParams.get('chat') === '1'"), 'legacy chat route should remain accepted for compatibility');
 assert(index.includes('id="save-idea-btn"'), 'live chat source should include the visible Save Idea button');

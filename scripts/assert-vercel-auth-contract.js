@@ -7,7 +7,9 @@ const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
 const middleware = read('middleware.js');
 const vercel = read('vercel.json');
+const vercelConfig = JSON.parse(vercel);
 const index = read('public/index.html');
+const voice = read('public/voice.html');
 const manifest = read('public/manifest.json');
 const chat = read('api/chat.js');
 const ideas = read('api/ideas.js');
@@ -52,7 +54,14 @@ assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sess
 assert(manifest.includes('"start_url": "/?v=2026-06-13-2"'), 'PWA start_url should carry the current shell version');
 assert(!manifest.includes('voice.html'), 'PWA start_url should open the current chat UI, not the legacy voice page');
 
-for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/voice.html"', '"source": "/manifest.json"']) {
+const voiceRedirect = (vercelConfig.redirects || []).find((redirect) => redirect.source === '/voice.html');
+assert(voiceRedirect, 'vercel config should redirect /voice.html before serving a document');
+assert.strictEqual(voiceRedirect.destination, '/?mastermind=1&chat=1&v=2026-06-13-2', '/voice.html should redirect to the current Mastermind chat UI');
+assert.strictEqual(voiceRedirect.permanent, false, '/voice.html redirect should remain temporary during mobile/PWA recovery');
+assert(!voice.includes('window.location.replace'), '/voice.html should not rely on a client-side JS redirect');
+assert(!voice.includes('id="orb"'), '/voice.html should not contain the legacy 8-bit voice app');
+
+for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/voice.html"', '"source": "/voice-legacy.html"', '"source": "/manifest.json"']) {
   assert(vercel.includes(source), `vercel headers should include ${source}`);
 }
 assert(vercel.includes('"key": "Cache-Control"'), 'vercel config should set cache-control headers');
