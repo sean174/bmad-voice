@@ -1555,7 +1555,9 @@ async function refreshHealthDiagnostic() {
   }
 
   try {
-    const response = await fetch('/api/health');
+    const response = await fetch('/api/health?bridge=1', {
+      headers: sessionToken ? { 'x-session-token': sessionToken } : {},
+    });
     if (!response.ok) {
       showSessionDiagnostic('App health check failed.', true);
       return;
@@ -1569,6 +1571,9 @@ async function refreshHealthDiagnostic() {
     if (!checks.hermesConfigured) missing.push('Hermes');
     if (missing.length > 0) {
       showSessionDiagnostic(`App online. Missing config: ${missing.join(', ')}.`, true);
+    } else if (checks.commandCenterContextLive && checks.commandCenterContextLive.status !== 'loaded') {
+      const status = checks.commandCenterContextLive.status || 'unavailable';
+      showSessionDiagnostic(`App online. Command Center context ${status}.`, true);
     } else {
       showSessionDiagnostic('App online. Session ready.');
     }

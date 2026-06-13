@@ -46,7 +46,8 @@ assert(index.includes("new URLSearchParams(window.location.search).get('reset') 
 assert(index.includes('sessionStorage.clear()'), 'reset recovery should clear sessionStorage');
 assert(index.includes("url.searchParams.set('t', Date.now().toString(36))"), 'reset recovery should reload with a cache-busting query');
 assert(index.includes('Session accepted. Build'), 'saved session probe should explain expected diagnostic statuses');
-assert(index.includes("fetch('/api/health')"), 'browser should show non-secret health diagnostics');
+assert(index.includes("fetch('/api/health?bridge=1'"), 'browser should show non-secret health diagnostics');
+assert(index.includes("'x-session-token': sessionToken"), 'health diagnostic should send the session token for the bridge probe');
 assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sessionToken"), 'lifecycle resume should restore the session token');
 assert(manifest.includes('"start_url": "/?v=2026-06-12-4"'), 'PWA start_url should carry the current shell version');
 
@@ -91,6 +92,10 @@ assert(chat.includes('do not say you lack the full operational picture'), 'chat 
 assert(!/process\.env\.(COMMAND_CENTER_CONTEXT_URL|COMMAND_CENTER_IDEAS_URL|MASTERMIND_BRIDGE_TOKEN|HERMES_API_KEY|HERMES_API_BASE_URL|API_SERVER_KEY|VERCEL_TOKEN|DASHBOARD_TOKEN)/.test(index), 'public HTML must not read secret or bridge env names');
 assert(health.includes('Boolean(process.env.'), 'health checks should report booleans instead of env values');
 assert(!/:\s*process\.env\.[A-Z0-9_]+/.test(health), 'health response must not return raw env values');
+assert(health.includes('probeCommandCenterContext'), 'health should include a session-gated Command Center bridge probe');
+assert(health.includes("req.query?.bridge === '1'"), 'bridge probe should be explicitly requested');
+assert(health.includes('sessionAuthenticated'), 'health should report whether the supplied session token matched');
+assert(health.includes('commandCenterContextLive'), 'health should expose non-secret live context bridge status');
 
 for (const key of [
   'authConfigured',
