@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <title>Mastermind Voice</title>
+<script>
+(function () {
+  'use strict';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('legacy_voice') === '1') return;
+
+  try { sessionStorage.setItem('prefer_chat', '1'); } catch (e) {}
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('mastermind', '1');
+  url.searchParams.set('chat', '1');
+  url.searchParams.set('v', '2026-06-13-2');
+  url.searchParams.set('t', Date.now().toString(36));
+  window.location.replace(url.toString());
+})();
+</script>
 <style>
   :root { --navy:#0a1024; --navy2:#131c38; --gold:#e8b23a; --gold2:#f5d27a; --ink:#e8ecf8; --mut:#8593b8; --dim:#5e6f8c; --ok:#3cbc5c; --bad:#d04848; --line:#2a3a66; }
   * { box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent; image-rendering:pixelated; }

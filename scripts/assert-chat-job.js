@@ -125,6 +125,8 @@ const confirmIdeaCatch = confirmIdeaClick.slice(confirmIdeaClick.indexOf('} catc
 assert(!confirmIdeaCatch.includes('closeIdeaConfirm()'), 'Failed save should preserve the editable idea sheet');
 
 assert(voice.includes('id="chat-link"'), '8-bit Chat link should be script-addressable');
+assert(voice.includes("params.get('legacy_voice') === '1'"), 'legacy 8-bit voice app should require explicit opt-in');
+assert(voice.includes('window.location.replace(url.toString())'), 'default /voice.html entry should route into the current root UI');
 assert(voice.includes('href="/?mastermind=1&chat=1&v='), '8-bit Chat link should target the current Mastermind chat interface with cache busting');
 assert(voice.includes("sessionStorage.setItem('prefer_chat', '1')"), '8-bit Chat click should pin chat before navigating');
 assert(voice.includes("url.searchParams.set('mastermind', '1')"), '8-bit Chat click should keep the current Mastermind route');

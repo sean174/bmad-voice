@@ -52,7 +52,7 @@ assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sess
 assert(manifest.includes('"start_url": "/?v=2026-06-13-2"'), 'PWA start_url should carry the current shell version');
 assert(!manifest.includes('voice.html'), 'PWA start_url should open the current chat UI, not the legacy voice page');
 
-for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/manifest.json"']) {
+for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/voice.html"', '"source": "/manifest.json"']) {
   assert(vercel.includes(source), `vercel headers should include ${source}`);
 }
 assert(vercel.includes('"key": "Cache-Control"'), 'vercel config should set cache-control headers');
