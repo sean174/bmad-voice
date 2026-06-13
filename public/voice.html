@@ -73,9 +73,9 @@
 <body data-state="idle">
 <canvas id="stars"></canvas>
   <header>
-    <a href="/?mastermind=1">◂ CHAT</a>
+    <a id="chat-link" href="/?mastermind=1&chat=1&v=2026-06-13-2">◂ CHAT</a>
     <span class="brand">MASTERMIND</span>
-    <span class="build">2026-06-12-4</span>
+    <span class="build">2026-06-13-2</span>
   </header>
   <div id="hud"><span class="p1">1UP SEAN</span><span class="coins" id="coinHud">IDEAS BANKED 0</span></div>
 
@@ -105,6 +105,20 @@
   const token = localStorage.getItem('bmad_token');
   const userLabel = localStorage.getItem('bmad_label') || 'unknown';
   if (!token) { location.href = '/'; return; }
+
+  const chatLink = document.getElementById('chat-link');
+  if (chatLink) {
+    chatLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      try { sessionStorage.setItem('prefer_chat', '1'); } catch (e) {}
+      const url = new URL('/', window.location.origin);
+      url.searchParams.set('mastermind', '1');
+      url.searchParams.set('chat', '1');
+      url.searchParams.set('v', '2026-06-13-2');
+      url.searchParams.set('t', Date.now().toString(36));
+      window.location.href = url.toString();
+    });
+  }
 
   function api(url, options = {}) {
     const headers = Object.assign({}, options.headers, { 'x-session-token': token });

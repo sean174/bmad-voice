@@ -124,9 +124,18 @@ assert(confirmIdeaClick.includes("showToast(e.message || 'Could not save idea.',
 const confirmIdeaCatch = confirmIdeaClick.slice(confirmIdeaClick.indexOf('} catch (e) {'), confirmIdeaClick.indexOf('} finally {'));
 assert(!confirmIdeaCatch.includes('closeIdeaConfirm()'), 'Failed save should preserve the editable idea sheet');
 
-assert(voice.includes('<a href="/?mastermind=1">◂ CHAT</a>'), '8-bit Chat link should target the current Mastermind chat interface');
+assert(voice.includes('id="chat-link"'), '8-bit Chat link should be script-addressable');
+assert(voice.includes('href="/?mastermind=1&chat=1&v='), '8-bit Chat link should target the current Mastermind chat interface with cache busting');
+assert(voice.includes("sessionStorage.setItem('prefer_chat', '1')"), '8-bit Chat click should pin chat before navigating');
+assert(voice.includes("url.searchParams.set('mastermind', '1')"), '8-bit Chat click should keep the current Mastermind route');
+assert(voice.includes("url.searchParams.set('chat', '1')"), '8-bit Chat click should preserve legacy chat route compatibility');
+assert(voice.includes("url.searchParams.set('t', Date.now().toString(36))"), '8-bit Chat click should include a navigation cache buster');
 assert(index.includes("__routeParams.get('mastermind') === '1'"), 'current Mastermind route should pin chat on mobile');
 assert(index.includes("__routeParams.get('chat') === '1'"), 'legacy chat route should remain accepted for compatibility');
+assert(index.includes('id="save-idea-btn"'), 'live chat source should include the visible Save Idea button');
+assert(index.includes('id="voice-mode-btn"'), 'live chat source should include the visible Voice Mode button');
+assert(!index.includes("window.location.replace('/voice.html')"), 'index should not auto-redirect authenticated mobile users to the legacy voice page');
+assert(!index.includes('href="/voice.html"'), 'default entry links should not send users to the legacy voice page');
 
 import(pathToFileURL(path.join(root, 'api', 'mastermind-chat-jobs.js')).href)
   .then(({ buildChatCompletionRequestForJob }) => {

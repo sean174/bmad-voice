@@ -49,7 +49,8 @@ assert(index.includes('Session accepted. Build'), 'saved session probe should ex
 assert(index.includes("fetch('/api/health?bridge=1'"), 'browser should show non-secret health diagnostics');
 assert(index.includes("'x-session-token': sessionToken"), 'health diagnostic should send the session token for the bridge probe');
 assert(index.includes("sessionToken = localStorage.getItem('bmad_token') || sessionToken"), 'lifecycle resume should restore the session token');
-assert(manifest.includes('"start_url": "/?v=2026-06-12-4"'), 'PWA start_url should carry the current shell version');
+assert(manifest.includes('"start_url": "/?v=2026-06-13-2"'), 'PWA start_url should carry the current shell version');
+assert(!manifest.includes('voice.html'), 'PWA start_url should open the current chat UI, not the legacy voice page');
 
 for (const source of ['"source": "/"', '"source": "/index.html"', '"source": "/manifest.json"']) {
   assert(vercel.includes(source), `vercel headers should include ${source}`);
@@ -80,9 +81,9 @@ for (const value of publicBundleForbidden) {
 }
 
 assert(chat.includes("process.env.COMMAND_CENTER_CONTEXT_URL || ''"), 'chat should read Command Center context URL server-side');
-assert(chat.includes("process.env.MASTERMIND_BRIDGE_TOKEN || ''"), 'chat should read bridge token server-side');
+assert(ideas.includes("process.env.MASTERMIND_BRIDGE_TOKEN || ''"), 'ideas save helper should read bridge token server-side');
+assert(chat.includes("import { saveIdeaPayloadToCommandCenter } from './ideas.js';"), 'chat idea capture should reuse the server-side ideas save helper');
 assert(chat.includes('Authorization: `Bearer ${token}`'), 'context fetch should use server-side bearer token');
-assert(chat.includes('Authorization: `Bearer ${bridgeToken}`'), 'chat idea capture should use server-side bridge token');
 assert(ideas.includes('Authorization: `Bearer ${bridgeToken}`'), 'ideas endpoint should use server-side bridge token');
 assert(chat.includes('safeContextDiagnostics'), 'chat should expose only safe context diagnostics');
 assert(chat.includes('projects_sorted_by_rank'), 'chat should preserve ranked project context in compact mode');

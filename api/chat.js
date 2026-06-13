@@ -1,4 +1,5 @@
 import { Pool } from '@neondatabase/serverless';
+import { saveIdeaPayloadToCommandCenter } from './ideas.js';
 
 const SYSTEM_PROMPT = `You are Mastermind, Sean's single strategic voice interface for Command Center with a CEO coach layer for Elevated Advisor.
 
@@ -847,34 +848,16 @@ function getIdeaCommandText(text) {
 }
 
 async function saveIdeaToCommandCenter(ideaText, reqBody = {}) {
-  const ideasUrl = process.env.COMMAND_CENTER_IDEAS_URL || '';
-  const bridgeToken = process.env.MASTERMIND_BRIDGE_TOKEN || '';
-  if (!ideasUrl || !bridgeToken) {
-    throw new Error('Ideas bridge not configured');
-  }
-
-  const response = await fetch(ideasUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${bridgeToken}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+  return saveIdeaPayloadToCommandCenter({
+    text: ideaText,
+    session_id: reqBody.session_id || null,
+    tags: ['phase-0'],
+    meta: {
+      user_label: reqBody.user_label || null,
+      saved_at: new Date().toISOString(),
+      via: 'api-chat-intercept',
     },
-    body: JSON.stringify({
-      text: ideaText,
-      source: 'mastermind-vercel',
-      session_id: reqBody.session_id || null,
-      tags: [],
-      meta: {
-        via: 'api-chat-intercept',
-        user_label: reqBody.user_label || null,
-      },
-    }),
   });
-
-  if (!response.ok) {
-    throw new Error(`Ideas bridge returned ${response.status}`);
-  }
 }
 
 function writeSseHeaders(res) {
@@ -1079,13 +1062,16 @@ async function prepareChatRequest(reqBody) {
       };
     } catch (e) {
       console.warn('Chat idea capture failed', { reason: e.message });
+      const bridgeUnavailable = e.statusCode === 503;
       return {
         mode,
         provider: 'idea-intercept',
         contextLoadMs: 0,
         managedMessages: [],
         systemPrompt: '',
-        directResponse: 'I could not save that idea. Try the Save Idea button or retry in a moment.',
+        directResponse: bridgeUnavailable
+          ? 'Ideas saving is not connected on the server right now. Use the Save Idea button after the bridge is reconnected.'
+          : 'The Ideas bridge rejected that save. Open Save Idea, review the text, and try again.',
         usage: { inputTokens: 0, outputTokens: 0, estimatedCost: 0 },
       };
     }
@@ -1505,7 +1491,12 @@ export default async function handler(req, res) {
       writeTextChunk(res, `Saved to Ideas: ${truncateIdeaText(latestIdeaText)}`);
     } catch (e) {
       console.warn('Chat idea capture failed', { reason: e.message });
-      writeTextChunk(res, 'I could not save that idea. Try the Save Idea button or retry in a moment.');
+      writeTextChunk(
+        res,
+        e.statusCode === 503
+          ? 'Ideas saving is not connected on the server right now. Use the Save Idea button after the bridge is reconnected.'
+          : 'The Ideas bridge rejected that save. Open Save Idea, review the text, and try again.'
+      );
     }
 
     writeDoneChunk(res, 0, 0, 0);

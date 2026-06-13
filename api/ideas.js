@@ -15,6 +15,58 @@ function isAuthorized(req) {
   return bodyToken === expected || bearerToken === expected || headerToken === expected;
 }
 
+export async function saveIdeaPayloadToCommandCenter(payload = {}) {
+  const ideasUrl = process.env.COMMAND_CENTER_IDEAS_URL || '';
+  const bridgeToken = process.env.MASTERMIND_BRIDGE_TOKEN || '';
+  if (!ideasUrl || !bridgeToken) {
+    const err = new Error('Ideas bridge is not connected yet.');
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const ideaText = typeof payload.text === 'string' ? payload.text.trim() : '';
+  if (!ideaText) {
+    const err = new Error('Idea text required');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const response = await fetch(ideasUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${bridgeToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      text: ideaText,
+      source: 'mastermind-vercel',
+      session_id: payload.session_id || null,
+      tags: Array.isArray(payload.tags) ? payload.tags : [],
+      meta: payload.meta && typeof payload.meta === 'object' ? payload.meta : {},
+    }),
+  });
+
+  const raw = await response.text();
+  let responsePayload = {};
+  if (raw) {
+    try {
+      responsePayload = JSON.parse(raw);
+    } catch (e) {
+      responsePayload = { message: raw.slice(0, 500) };
+    }
+  }
+
+  if (!response.ok) {
+    const err = new Error(responsePayload.error || responsePayload.message || `Ideas bridge returned ${response.status}`);
+    err.statusCode = response.status;
+    err.payload = responsePayload;
+    throw err;
+  }
+
+  return { status: response.status, payload: responsePayload };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -24,48 +76,16 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const ideasUrl = process.env.COMMAND_CENTER_IDEAS_URL || '';
-  const bridgeToken = process.env.MASTERMIND_BRIDGE_TOKEN || '';
-  if (!ideasUrl || !bridgeToken) {
-    return res.status(503).json({ error: 'Ideas bridge is not connected yet.' });
-  }
-
   const { text, session_id, tags, meta } = req.body || {};
-  const ideaText = typeof text === 'string' ? text.trim() : '';
-  if (!ideaText) {
-    return res.status(400).json({ error: 'Idea text required' });
-  }
 
   try {
-    const response = await fetch(ideasUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${bridgeToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        text: ideaText,
-        source: 'mastermind-vercel',
-        session_id: session_id || null,
-        tags: Array.isArray(tags) ? tags : [],
-        meta: meta && typeof meta === 'object' ? meta : {},
-      }),
-    });
-
-    const raw = await response.text();
-    let payload = {};
-    if (raw) {
-      try {
-        payload = JSON.parse(raw);
-      } catch (e) {
-        payload = { message: raw.slice(0, 500) };
-      }
-    }
-
-    return res.status(response.status).json(payload);
+    const { status, payload } = await saveIdeaPayloadToCommandCenter({ text, session_id, tags, meta });
+    return res.status(status).json(payload);
   } catch (e) {
+    if (e.statusCode === 400 || e.statusCode === 503) {
+      return res.status(e.statusCode).json({ error: e.message });
+    }
     console.warn('Ideas bridge request failed');
-    return res.status(502).json({ error: 'Ideas bridge request failed' });
+    return res.status(e.statusCode || 502).json(e.payload || { error: 'Ideas bridge request failed' });
   }
 }
