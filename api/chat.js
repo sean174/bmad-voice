@@ -1,4 +1,8 @@
 import { Pool } from '@neondatabase/serverless';
+import { logUsage as logAiUsage } from './_ai-usage.js';
+
+// Named once so the usage rows and the requests cannot disagree.
+const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 import { saveIdeaPayloadToCommandCenter } from './ideas.js';
 
 const SYSTEM_PROMPT = `You are Mastermind, Sean's single strategic voice interface for Command Center with a CEO coach layer for Elevated Advisor.
@@ -978,7 +982,7 @@ async function startAnthropicStream(systemPrompt, managedMessages, voice = false
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: ANTHROPIC_MODEL,
       // Voice replies are short by design - a low cap + low effort cuts
       // time-to-first-token and total generation time.
       max_tokens: voice ? 1024 : 4096,
@@ -1020,7 +1024,7 @@ async function startAnthropicCompletion(systemPrompt, managedMessages) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: ANTHROPIC_MODEL,
       max_tokens: 4096,
       system: systemPrompt,
       messages: managedMessages,
@@ -1195,6 +1199,17 @@ function parseAnthropicCompletion(json) {
   const inputTokens = json?.usage?.input_tokens || 0;
   const outputTokens = json?.usage?.output_tokens || 0;
   const estimatedCost = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000);
+  // Persisted as well as returned (2026-08-08). These counts used to live for
+  // exactly one response; now they land in ai_usage alongside every other app's.
+  // Not awaited: accounting must never delay a voice reply.
+  logAiUsage({
+    route: 'chat',
+    model: ANTHROPIC_MODEL,
+    inputTokens,
+    outputTokens,
+    cacheWrite: json?.usage?.cache_creation_input_tokens || 0,
+    cacheRead: json?.usage?.cache_read_input_tokens || 0,
+  });
   return { fullResponse: content, inputTokens, outputTokens, estimatedCost };
 }
 
