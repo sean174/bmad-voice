@@ -1,5 +1,5 @@
 import { Pool } from '@neondatabase/serverless';
-import { logUsage as logAiUsage } from './_ai-usage.js';
+import { logUsage as logAiUsage, trackPending, flushPending } from './_ai-usage.js';
 
 // Named once so the usage rows and the requests cannot disagree.
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
@@ -1201,15 +1201,16 @@ function parseAnthropicCompletion(json) {
   const estimatedCost = (inputTokens * 3 / 1_000_000) + (outputTokens * 15 / 1_000_000);
   // Persisted as well as returned (2026-08-08). These counts used to live for
   // exactly one response; now they land in ai_usage alongside every other app's.
-  // Not awaited: accounting must never delay a voice reply.
-  logAiUsage({
+  // Started here so it never delays the reply, and awaited by flushPending() at
+  // the end of the handler so Vercel cannot discard it. See _ai-usage.js.
+  trackPending(logAiUsage({
     route: 'chat',
     model: ANTHROPIC_MODEL,
     inputTokens,
     outputTokens,
     cacheWrite: json?.usage?.cache_creation_input_tokens || 0,
     cacheRead: json?.usage?.cache_read_input_tokens || 0,
-  });
+  }));
   return { fullResponse: content, inputTokens, outputTokens, estimatedCost };
 }
 
@@ -1693,7 +1694,7 @@ export default async function handler(req, res) {
     writeDoneChunk(res, streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost);
     res.end();
 
-    logMessage(streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost, user_label).catch(console.error);
+    trackPending(logMessage(streamResult.inputTokens, streamResult.outputTokens, streamResult.estimatedCost, user_label));
     console.info('Chat timing', {
       mode,
       ideaIntercept: false,
@@ -1704,6 +1705,10 @@ export default async function handler(req, res) {
       voiceMode,
       totalMs: Date.now() - startedAt,
     });
+
+    // Last thing before the handler returns: settle the accounting writes that
+    // were started during the turn. Without this Vercel discards them.
+    await flushPending();
 
   } catch (err) {
     console.error('Chat error');

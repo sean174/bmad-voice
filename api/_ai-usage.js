@@ -78,3 +78,28 @@ export async function logUsage({ route, model, inputTokens = 0, outputTokens = 0
     await pool.end().catch(() => {});
   }
 }
+
+// Vercel freezes the instance the moment a handler returns, so a promise nobody
+// awaited is simply discarded. Both writes in this app were started and never
+// awaited on the reasoning that accounting must not delay a voice reply, which
+// is a good instinct and, on this platform, produces no accounting at all: the
+// two Node apps in the estate that did the same thing had empty ai_usage tables
+// through weeks of real traffic (found 2026-08-10).
+//
+// So: still start the write early and never block the model call on it, but
+// register the promise and await it once at the end of the handler. Latency
+// cost is whatever is left of a single INSERT after the reply has been
+// generated, which is usually nothing.
+const pending = [];
+
+export function trackPending(promise) {
+  const p = Promise.resolve(promise).catch(e => console.error('background write failed:', e?.message));
+  pending.push(p);
+  return p;
+}
+
+export async function flushPending() {
+  if (!pending.length) return;
+  const inFlight = pending.splice(0, pending.length);
+  await Promise.all(inFlight);
+}
